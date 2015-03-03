@@ -17,6 +17,8 @@ func main() {
 	fmt.Println("aaaaaaa", t, s)
 	t.Do()
 	t.Kill()
+
+	tox.TestCCallGo()
 }
 
 

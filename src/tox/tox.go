@@ -13,6 +13,35 @@ import (
 #cgo LDFLAGS: -ltoxcore -ltoxdns -ltoxav -ltoxencryptsave
 #include <stdlib.h>
 #include <tox/tox.h>
+
+//////
+// 下面的extern行不是必须的，除非这个对应的go函数在其他的文件中。
+typedef void (*cb_file_send_request_ftype)(Tox *m, int32_t, uint8_t, uint64_t, uint8_t*, uint16_t, void*);
+void callbackFileSendRequestWrapperForC(Tox *m, int32_t, uint8_t, uint64_t, uint8_t*, uint16_t, void*);
+int CalledByCGO();
+int FortytwoAbc();
+static void cb_file_send_request_wrapper_for_go(Tox *tox, cb_file_send_request_ftype fn, void *userdata)
+{
+    tox_callback_file_send_request(tox, fn, userdata);
+}
+
+
+static void test_c_call_go()
+{
+    Tox *m = "12345";
+    int32_t a = 0;
+    uint8_t b = 0;
+    uint64_t c = 0;
+    const uint8_t *d = NULL;
+    uint16_t e = 0;
+    void *f = 0;
+
+    callbackFileSendRequestWrapperForC(m, a, b, c, d, e, f);
+    // CallbackFileSendRequestWrapperForC(m, a, b, c, d, e, f);
+    // calledbycgo();
+    FortytwoAbc();
+}
+
 */
 import "C"
 
@@ -30,6 +59,9 @@ type Tox struct {
 	x *C.Tox // save C.Tox
 	iopts interface{} // C.Tox_Options
 	opts *C.Tox_Options // C.Tox_Options
+
+	// some callbacks
+	cb_file_send_request func(this *Tox)
 }
 
 type Options struct {
@@ -41,6 +73,42 @@ type Options struct {
 	proxy_type int32
 	proxy_address string
 	proxy_port uint16
+}
+
+// fuck,原来这个"//export"是有含义的吗，不是注释。
+//export FortytwoAbc
+func FortytwoAbc() C.int {
+    return C.int(42)
+}
+
+func CalledByCGO() int {
+	return 12
+}
+
+// 包内部函数
+//export callbackFileSendRequestWrapperForC
+func callbackFileSendRequestWrapperForC(m *C.Tox, a C.int32_t, b C.uint8_t, c C.uint64_t,
+	d *C.uint8_t, e C.uint16_t, f unsafe.Pointer) {
+	var this = (*Tox)(f)
+	log.Println("called from c code", this)
+	log.Println(m, a, b, c, d, e, f)
+	if this.cb_file_send_request != nil {
+		this.cb_file_send_request(this)
+	}
+}
+
+func (this *Tox) CallbackFileSendRequest(cbfun unsafe.Pointer, userData interface{}) {
+	var _userData = unsafe.Pointer(&userData)
+	// var _cbfun int = callbackFileSendRequestWrapperForC
+	
+	var _bfun = (C.cb_file_send_request_ftype)(unsafe.Pointer(C.callbackFileSendRequestWrapperForC))
+	
+	C.cb_file_send_request_wrapper_for_go(this.x, _bfun, _userData);
+}
+
+func TestCCallGo() {
+	log.Println("calling C...")
+	C.test_c_call_go()
 }
 
 func NewTox() *Tox {
@@ -57,9 +125,10 @@ func NewTox() *Tox {
 	gt.ix = ct
 	gt.x = ct
 	fmt.Println(reflect.TypeOf(opts), gt)
-	
+
 	// fmt.Println(x)
-	return &Tox{1, gt.ix, gt.x, gt.iopts, gt.opts}
+	return gt
+	// return &Tox{1, gt.ix, gt.x, gt.iopts, gt.opts}
 }
 
 func (this *Tox) Kill() {

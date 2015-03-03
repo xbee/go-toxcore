@@ -5,7 +5,7 @@ package tox
 #include <stdlib.h>
 #include <stdint.h>
 
-uint8_t *char2uint8(char *s)
+static uint8_t *char2uint8(char *s)
 {
     return (uint8_t*)s;
 }
@@ -17,3 +17,4 @@ import "C"
 func char2uint8(s *C.char) *C.uint8_t {
 	return C.char2uint8(s)
 }
+
