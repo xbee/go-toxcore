@@ -5,10 +5,7 @@ package tox
 #include <stdlib.h>
 #include <stdint.h>
 
-static uint8_t *char2uint8(char *s)
-{
-    return (uint8_t*)s;
-}
+static uint8_t *char2uint8(char *s) { return (uint8_t*)s; }
 
 */
 import "C"

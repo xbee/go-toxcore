@@ -9,23 +9,119 @@ import (
 )
 
 /*
-#cgo CFLAGS: -g -O2 -Wall
+// #cgo CFLAGS: -g -O2 -Wall
+#cgo CFLAGS: -g -O2
 #cgo LDFLAGS: -ltoxcore -ltoxdns -ltoxav -ltoxencryptsave
 #include <stdlib.h>
 #include <tox/tox.h>
 
-//////
-// 下面的extern行不是必须的，除非这个对应的go函数在其他的文件中。
-typedef void (*cb_file_send_request_ftype)(Tox *m, int32_t, uint8_t, uint64_t, uint8_t*, uint16_t, void*);
-void callbackFileSendRequestWrapperForC(Tox *m, int32_t, uint8_t, uint64_t, uint8_t*, uint16_t, void*);
+///////
 int CalledByCGO();
 int FortytwoAbc();
-static void cb_file_send_request_wrapper_for_go(Tox *tox, cb_file_send_request_ftype fn, void *userdata)
-{
-    tox_callback_file_send_request(tox, fn, userdata);
-}
+
+//////
+
+void callbackFriendRequestWrapperForC(Tox *, uint8_t *, uint8_t *, uint16_t, void*);
+typedef void (*cb_friend_request_ftype)(Tox *, uint8_t *, uint8_t *, uint16_t, void*);
+static void cb_friend_request_wrapper_for_go(Tox *m, cb_friend_request_ftype fn, void *userdata)
+{ tox_callback_friend_request(m, fn, userdata); }
+
+void callbackFriendMessageWrapperForC(Tox *, int32_t, uint8_t*, uint16_t, void*);
+typedef void (*cb_friend_message_ftype)(Tox *, int32_t, uint8_t*, uint16_t, void*);
+static void cb_friend_message_wrapper_for_go(Tox *m, cb_friend_message_ftype fn, void *userdata)
+{ tox_callback_friend_message(m, fn, userdata); }
+
+void callbackFriendActionWrapperForC(Tox *, int32_t, uint8_t*, uint16_t, void*);
+typedef void (*cb_friend_action_ftype)(Tox *, int32_t, uint8_t*, uint16_t, void*);
+static void cb_friend_action_wrapper_for_go(Tox *m, cb_friend_action_ftype fn, void *userdata)
+{ tox_callback_friend_action(m, fn, userdata); }
+
+void callbackNameChangeWrapperForC(Tox *, int32_t, uint8_t*, uint16_t, void*);
+typedef void (*cb_name_change_ftype)(Tox *, int32_t, uint8_t*, uint16_t, void*);
+static void cb_name_change_wrapper_for_go(Tox *m, cb_name_change_ftype fn, void *userdata)
+{ tox_callback_name_change(m, fn, userdata); }
+
+void callbackStatusMessageWrapperForC(Tox *, int32_t, uint8_t*, uint16_t, void*);
+typedef void (*cb_status_message_ftype)(Tox *, int32_t, uint8_t*, uint16_t, void*);
+static void cb_status_message_wrapper_for_go(Tox *m, cb_status_message_ftype fn, void *userdata)
+{ tox_callback_status_message(m, fn, userdata); }
+
+void callbackUserStatusWrapperForC(Tox *, int32_t, uint8_t, void*);
+typedef void (*cb_user_status_ftype)(Tox *, int32_t, uint8_t, void*);
+static void cb_user_status_wrapper_for_go(Tox *m, cb_user_status_ftype fn, void *userdata)
+{ tox_callback_user_status(m, fn, userdata); }
+
+void callbackTypingChangeWrapperForC(Tox *, int32_t, uint8_t, void*);
+typedef void (*cb_typing_change_ftype)(Tox *, int32_t, uint8_t, void*);
+static void cb_typing_change_wrapper_for_go(Tox *m, cb_typing_change_ftype fn, void *userdata)
+{ tox_callback_typing_change(m, fn, userdata); }
+
+void callbackReadReceiptWrapperForC(Tox *, int32_t, uint32_t, void*);
+typedef void (*cb_read_receipt_ftype)(Tox *, int32_t, uint32_t, void*);
+static void cb_read_receipt_wrapper_for_go(Tox *m, cb_read_receipt_ftype fn, void *userdata)
+{ tox_callback_read_receipt(m, fn, userdata); }
+
+void callbackConnectionStatusWrapperForC(Tox *, int32_t, uint8_t, void*);
+typedef void (*cb_connection_status_ftype)(Tox *, int32_t, uint8_t, void*);
+static void cb_connection_status_wrapper_for_go(Tox *m, cb_connection_status_ftype fn, void *userdata)
+{ tox_callback_connection_status(m, fn, userdata); }
 
 
+void callbackGroupInviteWrapperForC(Tox*, int32_t, uint8_t, uint8_t *, uint16_t, void *);
+typedef void (*cb_group_invite_ftype)(Tox *, int32_t, uint8_t, uint8_t *, uint16_t, void *);
+static void cb_group_invite_wrapper_for_go(Tox *m, cb_group_invite_ftype fn, void *userdata)
+{ tox_callback_group_invite(m, fn, userdata); }
+
+void callbackGroupMessageWrapperForC(Tox *, int, int , uint8_t *, uint16_t, void *);
+typedef void (*cb_group_message_ftype)(Tox *, int, int , uint8_t *, uint16_t, void *);
+static void cb_group_message_wrapper_for_go(Tox *m, cb_group_message_ftype fn, void *userdata)
+{ tox_callback_group_message(m, fn, userdata); }
+
+void callbackGroupActionWrapperForC(Tox*, int, int, uint8_t*, uint16_t, void*);
+typedef void (*cb_group_action_ftype)(Tox*, int, int, uint8_t*, uint16_t, void*);
+static void cb_group_action_wrapper_for_go(Tox *m, cb_group_action_ftype fn, void *userdata)
+{ tox_callback_group_action(m, fn, userdata); }
+
+void callbackGroupTitleWrapperForC(Tox*, int, int, uint8_t*, uint8_t, void*);
+typedef void (*cb_group_title_ftype)(Tox*, int, int, uint8_t*, uint8_t, void*);
+static void cb_group_title_wrapper_for_go(Tox *m, cb_group_title_ftype fn, void *userdata)
+{ tox_callback_group_title(m, fn, userdata); }
+
+void callbackGroupNameListChangeWrapperForC(Tox*, int, int, uint8_t, void*);
+typedef void (*cb_group_namelist_change_ftype)(Tox*, int, int, uint8_t, void*);
+static void cb_group_namelist_change_wrapper_for_go(Tox *m, cb_group_namelist_change_ftype fn, void *userdata)
+{ tox_callback_group_namelist_change(m, fn, userdata); }
+
+void callbackAvatarInfoWrapperForC(Tox*, int32_t, uint8_t, uint8_t *, void *);
+typedef void (*cb_avatar_info_ftype)(Tox *, int32_t, uint8_t, uint8_t *, void *);
+static void cb_avatar_info_wrapper_for_go(Tox *m, cb_avatar_info_ftype fn, void *userdata)
+{ tox_callback_avatar_info(m, fn, userdata); }
+
+void callbackAvatarDataWrapperForC(Tox *, int32_t, uint8_t, uint8_t*, uint8_t*, uint32_t, void*);
+typedef void (*cb_avatar_data_ftype)(Tox *, int32_t, uint8_t, uint8_t*, uint8_t*, uint32_t, void*);
+static void cb_avatar_data_wrapper_for_go(Tox *m, cb_avatar_data_ftype fn, void *userdata)
+{ tox_callback_avatar_data(m, fn, userdata); }
+
+// 下面的extern行不是必须的，除非这个对应的go函数在其他的文件中，或者要在go中引用它。
+// 声明go语言层的回调封装函数原型
+void callbackFileSendRequestWrapperForC(Tox*, int32_t, uint8_t, uint64_t, uint8_t*, uint16_t, void*);
+// 定义回调函数类型，这样定义后，能够在go语言层引用这种函数指针类型。
+typedef void (*cb_file_send_request_ftype)(Tox*, int32_t, uint8_t, uint64_t, uint8_t*, uint16_t, void*);
+// 定义C语言层的回调实现。
+static void cb_file_send_request_wrapper_for_go(Tox *m, cb_file_send_request_ftype fn, void *userdata)
+{ tox_callback_file_send_request(m, fn, userdata); }
+
+void callbackFileControlWrapperForC(Tox*, int32_t, uint8_t, uint8_t, uint8_t, uint8_t*, uint16_t, void*);
+typedef void (*cb_file_control_ftype)(Tox*, int32_t, uint8_t, uint8_t, uint8_t, uint8_t*, uint16_t, void*);
+static void cb_file_control_wrapper_for_go(Tox *m, cb_file_control_ftype fn, void *userdata)
+{ tox_callback_file_control(m, fn, userdata); }
+
+void callbackFileDataWrapperForC(Tox*, int32_t, uint8_t, uint8_t*, uint16_t, void*);
+typedef void (*cb_file_data_ftype)(Tox*, int32_t, uint8_t, uint8_t*, uint16_t, void*);
+static void cb_file_data_wrapper_for_go(Tox *m, cb_file_data_ftype fn, void *userdata)
+{ tox_callback_file_data(m, fn, userdata); }
+
+////////////////
 static void test_c_call_go()
 {
     Tox *m = "12345";
@@ -45,12 +141,45 @@ static void test_c_call_go()
 */
 import "C"
 
+
 type IToxer interface {
 	//a int32
 }
 
 type CTox C.Tox
 type CToxOptions C.Tox_Options
+
+//////////
+// friend cb type
+type cb_friend_request_ftype func(this *Tox, publicKey *uint8, data *uint8, length uint16, userData unsafe.Pointer)
+type cb_friend_message_ftype func(this *Tox, friendNumber int32, message *uint8, length uint16, userData unsafe.Pointer)
+type cb_friend_action_ftype func(this *Tox, friendNumber int32, message *uint8, length uint16, userData unsafe.Pointer)
+type cb_name_change_ftype func(this *Tox, friendNumber int32, newName *uint8, length uint16, userData unsafe.Pointer)
+type cb_status_message_ftype func(this *Tox, friendNumber int32, newStatus *uint8, length uint16, userData unsafe.Pointer)
+type cb_user_status_ftype func(this *Tox, friendNumber int32, status uint8, userData unsafe.Pointer)
+type cb_typing_change_ftype func(this *Tox, friendNumber int32, isTyping uint8, userData unsafe.Pointer)
+type cb_read_receipt_ftype func(this *Tox, friendNumber int32, receipt uint32, userData unsafe.Pointer)
+type cb_connection_status_ftype func(this *Tox, friendNumber int32, status uint8, userData unsafe.Pointer)
+
+// group cb type
+type cb_group_invite_ftype func(this *Tox, friendNumber int32, itype uint8, data *uint8, length uint16, userData unsafe.Pointer)
+type cb_group_message_ftype func(this *Tox, groupNumber int, peerNumber int, message *uint8, length uint16, userData unsafe.Pointer)
+type cb_group_action_ftype func(this *Tox,  groupNumber int, peerNumber int, action *uint8, length uint16, userData unsafe.Pointer)
+type cb_group_title_ftype func(this *Tox,  groupNumber int, peerNumber int, title *uint8, length uint8, userData unsafe.Pointer)
+type cb_group_namelist_change_ftype func(this *Tox,  groupNumber int, peerNumber int, change uint8, userData unsafe.Pointer)
+
+// avatar cb type
+type cb_avatar_info_ftype func(this *Tox, friendNumber int32, format uint8, hash *uint8, userData unsafe.Pointer)
+type cb_avatar_data_ftype func(this *Tox, friendNumber int32, format uint8, hash *uint8,
+	data *uint8, datalen uint32, userData unsafe.Pointer)
+
+// file cb type
+type cb_file_send_request_ftype func(this *Tox, friendNumber int32, fileNumber uint8, fileSize uint64,
+	fileName *uint8, fileNameLength uint16, userData unsafe.Pointer)
+type cb_file_control_ftype func(this *Tox, friendNumber int32, recieveSend uint8, fileNumber uint8,
+	controlType uint8, data *uint8, length uint16, userData unsafe.Pointer)
+type cb_file_data_ftype func(this *Tox, friendNumber int32, fileNumber uint8, data *uint8,
+	length uint16, userData unsafe.Pointer)
 
 type Tox struct {
 	// C.Tox
@@ -60,8 +189,48 @@ type Tox struct {
 	iopts interface{} // C.Tox_Options
 	opts *C.Tox_Options // C.Tox_Options
 
-	// some callbacks
-	cb_file_send_request func(this *Tox)
+	// some callbacks, should be private
+	cb_friend_request cb_friend_request_ftype
+	cb_friend_request_user_data unsafe.Pointer
+	cb_friend_message cb_friend_message_ftype
+	cb_friend_message_user_data unsafe.Pointer
+	cb_friend_action cb_friend_action_ftype
+	cb_friend_action_user_data unsafe.Pointer
+	cb_name_change cb_name_change_ftype
+	cb_name_change_user_data unsafe.Pointer
+	cb_status_message cb_status_message_ftype
+	cb_status_message_user_data unsafe.Pointer
+	cb_user_status cb_user_status_ftype
+	cb_user_status_user_data unsafe.Pointer
+	cb_typing_change cb_typing_change_ftype
+	cb_typing_change_user_data unsafe.Pointer
+	cb_read_receipt cb_read_receipt_ftype
+	cb_read_receipt_user_data unsafe.Pointer
+	cb_connection_status cb_connection_status_ftype
+	cb_connection_status_user_data unsafe.Pointer
+	
+	cb_group_invite cb_group_invite_ftype
+	cb_group_invite_user_data unsafe.Pointer
+	cb_group_message cb_group_message_ftype
+	cb_group_message_user_data unsafe.Pointer
+	cb_group_action cb_group_action_ftype
+	cb_group_action_user_data unsafe.Pointer
+	cb_group_title cb_group_title_ftype
+	cb_group_title_user_data unsafe.Pointer
+	cb_group_namelist_change cb_group_namelist_change_ftype
+	cb_group_namelist_change_user_data unsafe.Pointer
+	
+	cb_avatar_info cb_avatar_info_ftype
+	cb_avatar_info_user_data unsafe.Pointer
+	cb_avatar_data cb_avatar_data_ftype
+	cb_avatar_data_user_data unsafe.Pointer
+	
+	cb_file_send_request cb_file_send_request_ftype
+	cb_file_send_request_user_data unsafe.Pointer
+	cb_file_control cb_file_control_ftype
+	cb_file_control_user_data unsafe.Pointer
+	cb_file_data cb_file_data_ftype
+	cb_file_data_user_data unsafe.Pointer
 }
 
 type Options struct {
@@ -85,25 +254,352 @@ func CalledByCGO() int {
 	return 12
 }
 
-// 包内部函数
-//export callbackFileSendRequestWrapperForC
-func callbackFileSendRequestWrapperForC(m *C.Tox, a C.int32_t, b C.uint8_t, c C.uint64_t,
-	d *C.uint8_t, e C.uint16_t, f unsafe.Pointer) {
-	var this = (*Tox)(f)
-	log.Println("called from c code", this)
-	log.Println(m, a, b, c, d, e, f)
-	if this.cb_file_send_request != nil {
-		this.cb_file_send_request(this)
+//export callbackFriendRequestWrapperForC
+func callbackFriendRequestWrapperForC(m *C.Tox, a0 *C.uint8_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
+	var this = (*Tox)(a3)
+	if this.cb_friend_request != nil {
+		this.cb_friend_request(this, (*uint8)(a0), (*uint8)(a1), uint16(a2), this.cb_friend_request_user_data)
 	}
 }
 
-func (this *Tox) CallbackFileSendRequest(cbfun unsafe.Pointer, userData interface{}) {
-	var _userData = unsafe.Pointer(&userData)
-	// var _cbfun int = callbackFileSendRequestWrapperForC
+func (this *Tox) CallbackFriendRequest(cbfun cb_friend_request_ftype, userData unsafe.Pointer) {
+	this.cb_friend_request = cbfun
+	this.cb_friend_request_user_data = userData
+
+	var _cbfun = (C.cb_friend_request_ftype)(C.callbackFriendRequestWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_friend_request_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackFriendMessageWrapperForC
+func callbackFriendMessageWrapperForC(m *C.Tox, a0 C.int32_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
+	var this = (*Tox)(a3)
+	if this.cb_friend_message != nil {
+		this.cb_friend_message(this, int32(a0), (*uint8)(a1), uint16(a2), this.cb_friend_message_user_data)
+	}
+}
+
+func (this *Tox) CallbackFriendMessage(cbfun cb_friend_message_ftype, userData unsafe.Pointer) {
+	this.cb_friend_message = cbfun
+	this.cb_friend_message_user_data = userData
+
+	var _cbfun = (C.cb_friend_message_ftype)(C.callbackFriendMessageWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_friend_message_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+
+//export callbackFriendActionWrapperForC
+func callbackFriendActionWrapperForC(m *C.Tox, a0 C.int32_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
+	var this = (*Tox)(a3)
+	if this.cb_friend_action != nil {
+		this.cb_friend_action(this, int32(a0), (*uint8)(a1), uint16(a2), this.cb_friend_action_user_data)
+	}
+}
+
+func (this *Tox) CallbackFriendAction(cbfun cb_friend_action_ftype, userData unsafe.Pointer) {
+	this.cb_friend_action = cbfun
+	this.cb_friend_action_user_data = userData
+
+	var _cbfun = (C.cb_friend_action_ftype)(C.callbackFriendActionWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_friend_action_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackNameChangeWrapperForC
+func callbackNameChangeWrapperForC(m *C.Tox, a0 C.int32_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
+	var this = (*Tox)(a3)
+	if this.cb_name_change != nil {
+		this.cb_name_change(this, int32(a0), (*uint8)(a1), uint16(a2), this.cb_name_change_user_data)
+	}
+}
+
+func (this *Tox) CallbackNameChange(cbfun cb_name_change_ftype, userData unsafe.Pointer) {
+	this.cb_name_change = cbfun
+	this.cb_name_change_user_data = userData
+
+	var _cbfun = (C.cb_name_change_ftype)(C.callbackNameChangeWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_name_change_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+
+//export callbackStatusMessageWrapperForC
+func callbackStatusMessageWrapperForC(m *C.Tox, a0 C.int32_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
+	var this = (*Tox)(a3)
+	if this.cb_status_message != nil {
+		this.cb_status_message(this, int32(a0), (*uint8)(a1), uint16(a2), this.cb_status_message_user_data)
+	}
+}
+
+func (this *Tox) CallbackStatusMessage(cbfun cb_status_message_ftype, userData unsafe.Pointer) {
+	this.cb_status_message = cbfun
+	this.cb_status_message_user_data = userData
+
+	var _cbfun = (C.cb_status_message_ftype)(C.callbackStatusMessageWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_status_message_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackUserStatusWrapperForC
+func callbackUserStatusWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
+	var this = (*Tox)(a2)
+	if this.cb_user_status != nil {
+		this.cb_user_status(this, int32(a0), uint8(a1), this.cb_user_status_user_data)
+	}
+}
+
+func (this *Tox) CallbackUserStatus(cbfun cb_user_status_ftype, userData unsafe.Pointer) {
+	this.cb_user_status = cbfun
+	this.cb_user_status_user_data = userData
+
+	var _cbfun = (C.cb_user_status_ftype)(C.callbackUserStatusWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_user_status_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackTypingChangeWrapperForC
+func callbackTypingChangeWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
+	var this = (*Tox)(a2)
+	if this.cb_typing_change != nil {
+		this.cb_typing_change(this, int32(a0), uint8(a1), this.cb_typing_change_user_data)
+	}
+}
+
+func (this *Tox) CallbackTypingChange(cbfun cb_typing_change_ftype, userData unsafe.Pointer) {
+	this.cb_typing_change = cbfun
+	this.cb_typing_change_user_data = userData
+
+	var _cbfun = (C.cb_typing_change_ftype)(C.callbackTypingChangeWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_typing_change_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackReadReceiptWrapperForC
+func callbackReadReceiptWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
+	var this = (*Tox)(a2)
+	if this.cb_read_receipt != nil {
+		this.cb_read_receipt(this, int32(a0), uint32(a1), this.cb_read_receipt_user_data)
+	}
+}
+
+func (this *Tox) CallbackReadReceipt(cbfun cb_read_receipt_ftype, userData unsafe.Pointer) {
+	this.cb_read_receipt = cbfun
+	this.cb_read_receipt_user_data = userData
+
+	var _cbfun = (C.cb_read_receipt_ftype)(C.callbackReadReceiptWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_read_receipt_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackConnectionStatusWrapperForC
+func callbackConnectionStatusWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
+	var this = (*Tox)(a2)
+	if this.cb_connection_status != nil {
+		this.cb_connection_status(this, int32(a0), uint8(a1), this.cb_connection_status_user_data)
+	}
+}
+
+func (this *Tox) CallbackConnectionStatus(cbfun cb_connection_status_ftype, userData unsafe.Pointer) {
+	this.cb_connection_status = cbfun
+	this.cb_connection_status_user_data = userData
+
+	var _cbfun = (C.cb_connection_status_ftype)(C.callbackConnectionStatusWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_connection_status_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackGroupInviteWrapperForC
+func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
+	var this = (*Tox)(a4)
+	if this.cb_group_invite != nil {
+		this.cb_group_invite(this, int32(a0), uint8(a1), (*uint8)(a2), uint16(a3), this.cb_group_invite_user_data)
+	}
+}
+
+func (this *Tox) CallbackGroupInvite(cbfun cb_group_invite_ftype, userData unsafe.Pointer) {
+	this.cb_group_invite = cbfun
+	this.cb_group_invite_user_data = userData
+
+	var _cbfun = (C.cb_group_invite_ftype)(C.callbackGroupInviteWrapperForC)
+	var _userData = unsafe.Pointer(this)
+	C.cb_group_invite_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackGroupMessageWrapperForC
+func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
+	var this = (*Tox)(a4)
+	if this.cb_group_message != nil {
+		this.cb_group_message(this, int(a0), int(a1), (*uint8)(a2), uint16(a3), this.cb_group_message_user_data)
+	}
+}
+
+func (this *Tox) CallbackGroupMessage(cbfun cb_group_message_ftype, userData unsafe.Pointer) {
+	this.cb_group_message = cbfun
+	this.cb_group_message_user_data = userData
+
+	var _cbfun = (C.cb_group_message_ftype)(C.callbackGroupMessageWrapperForC)
+	var _userData = unsafe.Pointer(this)
+	C.cb_group_message_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackGroupActionWrapperForC
+func callbackGroupActionWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
+	var this = (*Tox)(a4)
+	if this.cb_group_action != nil {
+		this.cb_group_action(this, int(a0), int(a1), (*uint8)(a2), uint16(a3), this.cb_group_action_user_data)
+	}
+}
+
+func (this *Tox) CallbackGroupAction(cbfun cb_group_action_ftype, userData unsafe.Pointer) {
+	this.cb_group_action = cbfun
+	this.cb_group_action_user_data = userData
+
+	var _cbfun = (C.cb_group_action_ftype)(C.callbackGroupActionWrapperForC)
+	var _userData = unsafe.Pointer(this)
+	C.cb_group_action_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackGroupTitleWrapperForC
+func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint8_t, a4 unsafe.Pointer) {
+	var this = (*Tox)(a4)
+	if this.cb_group_title != nil {
+		this.cb_group_title(this, int(a0), int(a1), (*uint8)(a2), uint8(a3), this.cb_group_title_user_data)
+	}
+}
+
+func (this *Tox) CallbackGroupTitle(cbfun cb_group_title_ftype, userData unsafe.Pointer) {
+	this.cb_group_title = cbfun
+	this.cb_group_title_user_data = userData
+
+	var _cbfun = (C.cb_group_title_ftype)(C.callbackGroupTitleWrapperForC)
+	var _userData = unsafe.Pointer(this)
+	C.cb_group_title_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackGroupNameListChangeWrapperForC
+func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 C.uint8_t, a3 unsafe.Pointer) {
+	var this = (*Tox)(a3)
+	if this.cb_group_namelist_change != nil {
+		this.cb_group_namelist_change(this, int(a0), int(a1), uint8(a2), this.cb_group_namelist_change_user_data)
+	}
+}
+
+func (this *Tox) CallbackGroupNameListChange(cbfun cb_group_namelist_change_ftype, userData unsafe.Pointer) {
+	this.cb_group_namelist_change = cbfun
+	this.cb_group_namelist_change_user_data = userData
+
+	var _cbfun = (C.cb_group_namelist_change_ftype)(C.callbackGroupNameListChangeWrapperForC)
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_group_namelist_change_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackAvatarInfoWrapperForC
+func callbackAvatarInfoWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.uint8_t, a3 unsafe.Pointer) {
+	var this = (*Tox)(a3)
 	
-	var _bfun = (C.cb_file_send_request_ftype)(unsafe.Pointer(C.callbackFileSendRequestWrapperForC))
+	if this.cb_avatar_info != nil {
+		this.cb_avatar_info(this, int32(a0), uint8(a1), (*uint8)(a2), this.cb_avatar_info_user_data)
+	}
+}
+
+func (this *Tox) CallbackAvatarInfo(cbfun cb_avatar_info_ftype, userData unsafe.Pointer) {
+	this.cb_avatar_info = cbfun
+	this.cb_avatar_info_user_data = userData
+
+	var _cbfun = (C.cb_avatar_info_ftype)(C.callbackAvatarInfoWrapperForC)
+	var _userData = unsafe.Pointer(this)
 	
-	C.cb_file_send_request_wrapper_for_go(this.x, _bfun, _userData);
+	C.cb_avatar_info_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackAvatarDataWrapperForC
+func callbackAvatarDataWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.uint8_t, a3 *C.uint8_t,
+	a4 C.uint32_t, a5 unsafe.Pointer) {
+	var this = (*Tox)(a5)
+	if this.cb_avatar_data != nil {
+		this.cb_avatar_data(this, int32(a0), uint8(a1), (*uint8)(a2), (*uint8)(a3), uint32(a4),
+			this.cb_avatar_data_user_data)
+	}
+}
+
+func (this *Tox) CallbackAvatarData(cbfun cb_avatar_data_ftype, userData unsafe.Pointer) {
+	this.cb_avatar_data = cbfun
+	this.cb_avatar_data_user_data = userData
+
+	var _cbfun = (C.cb_avatar_data_ftype)(C.callbackAvatarDataWrapperForC)
+	var _userData = unsafe.Pointer(this)
+	C.cb_avatar_data_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+
+// 包内部函数
+//export callbackFileSendRequestWrapperForC
+func callbackFileSendRequestWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 C.uint64_t,
+	a3 *C.uint8_t, a4 C.uint16_t, a5 unsafe.Pointer) {
+	var this = (*Tox)(a5)
+	log.Println("called from c code", this)
+	log.Println(m, a0, a1, a2, a3, a4, a5)
+	if this.cb_file_send_request != nil {
+		this.cb_file_send_request(this, int32(a0), uint8(a1), uint64(a2), (*uint8)(a3),
+			uint16(a4), this.cb_file_send_request_user_data)
+	}
+}
+
+func (this *Tox) CallbackFileSendRequest(cbfun cb_file_send_request_ftype, userData unsafe.Pointer) {
+	this.cb_file_send_request = cbfun
+	this.cb_file_send_request_user_data = userData;
+	var _cbfun = (C.cb_file_send_request_ftype)(unsafe.Pointer(C.callbackFileSendRequestWrapperForC))
+	var _userData = unsafe.Pointer(this)
+	
+	C.cb_file_send_request_wrapper_for_go(this.x, _cbfun, _userData);
+}
+
+//export callbackFileControlWrapperForC
+func callbackFileControlWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 C.uint8_t, a3 C.uint8_t,
+	a4 *C.uint8_t, a5 C.uint16_t, a6 unsafe.Pointer) {
+	var this = (*Tox)(a6)
+	if this.cb_file_control != nil {
+		this.cb_file_control(this, int32(a0), uint8(a1), uint8(a2), uint8(a3),
+			(*uint8)(a4), uint16(a5), this.cb_file_control_user_data)
+	}
+}
+
+func (this *Tox) CallbackFileControl(cbfun cb_file_control_ftype, userData unsafe.Pointer) {
+	this.cb_file_control = cbfun
+	this.cb_file_control_user_data = userData
+	var _cbfun = (C.cb_file_control_ftype)(unsafe.Pointer(C.callbackFileControlWrapperForC))
+	var _userData = unsafe.Pointer(this)
+
+	C.cb_file_control_wrapper_for_go(this.x, _cbfun, _userData)
+}
+
+//export callbackFileDataWrapperForC
+func callbackFileDataWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.uint8_t, a3 C.uint16_t,
+	a4 unsafe.Pointer) {
+	var this = (*Tox)(a4)
+	if this.cb_file_data != nil {
+		this.cb_file_data(this, int32(a0), uint8(a1), (*uint8)(a2), uint16(a3), this.cb_file_data_user_data)
+	}
+}
+
+func (this *Tox) CallbackFileData(cbfun cb_file_data_ftype, userData unsafe.Pointer) {
+	this.cb_file_data = cbfun
+	this.cb_file_data_user_data = userData
+	var _cbfun = (C.cb_file_data_ftype)(unsafe.Pointer(C.callbackFileDataWrapperForC))
+	var _userData = unsafe.Pointer(this)
+	
+	C.cb_file_data_wrapper_for_go(this.x, _cbfun, _userData)
 }
 
 func TestCCallGo() {
