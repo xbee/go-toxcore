@@ -9,9 +9,14 @@ static uint8_t *char2uint8(char *s) { return (uint8_t*)s; }
 
 */
 import "C"
+import "errors"
+import "fmt"
 
 // *C.char ==> *C.uint8_t
 func char2uint8(s *C.char) *C.uint8_t {
 	return C.char2uint8(s)
 }
 
+func toxerr(errno interface{}) error {
+	return errors.New(fmt.Sprintf("toxcore error: %v", errno))
+}
