@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log"
+	"strings"
 	// "reflect"
 	// "runtime"
 	"unsafe"
@@ -14,11 +15,8 @@ import (
 #cgo CFLAGS: -g -O2
 #cgo LDFLAGS: -ltoxcore -ltoxdns -ltoxav -ltoxencryptsave
 #include <stdlib.h>
+#include <string.h>
 #include <tox/tox.h>
-
-///////
-int CalledByCGO();
-int FortytwoAbc();
 
 //////
 
@@ -57,10 +55,10 @@ typedef void (*cb_read_receipt_ftype)(Tox *, int32_t, uint32_t, void*);
 static void cb_read_receipt_wrapper_for_go(Tox *m, cb_read_receipt_ftype fn, void *userdata)
 { tox_callback_friend_read_receipt(m, fn, userdata); }
 
-void callbackConnectionStatusWrapperForC(Tox *, int32_t, uint8_t, void*);
-typedef void (*cb_connection_status_ftype)(Tox *, int32_t, uint8_t, void*);
-static void cb_connection_status_wrapper_for_go(Tox *m, cb_connection_status_ftype fn, void *userdata)
-{ tox_callback_friend_connection_status(m, fn, userdata); }
+void callbackSelfConnectionStatusWrapperForC(Tox *, int32_t, void*);
+typedef void (*cb_self_connection_status_ftype)(Tox *, int32_t, void*);
+static void cb_self_connection_status_wrapper_for_go(Tox *m, cb_self_connection_status_ftype fn, void *userdata)
+{ tox_callback_self_connection_status(m, fn, userdata); }
 
 
 void callbackGroupInviteWrapperForC(Tox*, int32_t, uint8_t, uint8_t *, uint16_t, void *);
@@ -107,44 +105,19 @@ typedef void (*cb_file_data_ftype)(Tox*, int32_t, uint8_t, uint8_t*, uint16_t, v
 static void cb_file_data_wrapper_for_go(Tox *m, cb_file_data_ftype fn, void *userdata)
 { tox_callback_file_recv_chunk(m, fn, userdata); }
 
-////////////////
-static void test_c_call_go()
-{
-    Tox *m = "12345";
-    int32_t a = 0;
-    uint8_t b = 0;
-    uint64_t c = 0;
-    const uint8_t *d = NULL;
-    uint16_t e = 0;
-    void *f = 0;
-
-    callbackFileSendRequestWrapperForC(m, a, b, c, d, e, f);
-    // CallbackFileSendRequestWrapperForC(m, a, b, c, d, e, f);
-    // calledbycgo();
-    FortytwoAbc();
-}
-
 */
 import "C"
 
-type IToxer interface {
-	//a int32
-}
-
-type CTox C.Tox
-
-// type CToxOptions C.Tox_Options
-
 //////////
 // friend cb type
-type cb_friend_request_ftype func(this *Tox, publicKey *uint8, data *uint8, length uint16, userData unsafe.Pointer)
+type cb_friend_request_ftype func(this *Tox, pubkey string, message string, userData unsafe.Pointer)
 type cb_friend_message_ftype func(this *Tox, friendNumber uint32, message *uint8, length uint16, userData unsafe.Pointer)
 type cb_name_change_ftype func(this *Tox, friendNumber uint32, newName *uint8, length uint16, userData unsafe.Pointer)
 type cb_status_message_ftype func(this *Tox, friendNumber uint32, newStatus *uint8, length uint16, userData unsafe.Pointer)
 type cb_user_status_ftype func(this *Tox, friendNumber uint32, status uint8, userData unsafe.Pointer)
 type cb_typing_change_ftype func(this *Tox, friendNumber uint32, isTyping uint8, userData unsafe.Pointer)
 type cb_read_receipt_ftype func(this *Tox, friendNumber uint32, receipt uint32, userData unsafe.Pointer)
-type cb_connection_status_ftype func(this *Tox, friendNumber uint32, status uint8, userData unsafe.Pointer)
+type cb_self_connection_status_ftype func(this *Tox, status uint32, userData unsafe.Pointer)
 
 // group cb type
 type cb_group_invite_ftype func(this *Tox, friendNumber uint32, itype uint8, data *uint8, length uint16, userData unsafe.Pointer)
@@ -167,22 +140,22 @@ type Tox struct {
 	toxcore *C.Tox // save C.Tox
 
 	// some callbacks, should be private
-	cb_friend_request              cb_friend_request_ftype
-	cb_friend_request_user_data    unsafe.Pointer
-	cb_friend_message              cb_friend_message_ftype
-	cb_friend_message_user_data    unsafe.Pointer
-	cb_name_change                 cb_name_change_ftype
-	cb_name_change_user_data       unsafe.Pointer
-	cb_status_message              cb_status_message_ftype
-	cb_status_message_user_data    unsafe.Pointer
-	cb_user_status                 cb_user_status_ftype
-	cb_user_status_user_data       unsafe.Pointer
-	cb_typing_change               cb_typing_change_ftype
-	cb_typing_change_user_data     unsafe.Pointer
-	cb_read_receipt                cb_read_receipt_ftype
-	cb_read_receipt_user_data      unsafe.Pointer
-	cb_connection_status           cb_connection_status_ftype
-	cb_connection_status_user_data unsafe.Pointer
+	cb_friend_request                   cb_friend_request_ftype
+	cb_friend_request_user_data         unsafe.Pointer
+	cb_friend_message                   cb_friend_message_ftype
+	cb_friend_message_user_data         unsafe.Pointer
+	cb_name_change                      cb_name_change_ftype
+	cb_name_change_user_data            unsafe.Pointer
+	cb_status_message                   cb_status_message_ftype
+	cb_status_message_user_data         unsafe.Pointer
+	cb_user_status                      cb_user_status_ftype
+	cb_user_status_user_data            unsafe.Pointer
+	cb_typing_change                    cb_typing_change_ftype
+	cb_typing_change_user_data          unsafe.Pointer
+	cb_read_receipt                     cb_read_receipt_ftype
+	cb_read_receipt_user_data           unsafe.Pointer
+	cb_self_connection_status           cb_self_connection_status_ftype
+	cb_self_connection_status_user_data unsafe.Pointer
 
 	cb_group_invite                    cb_group_invite_ftype
 	cb_group_invite_user_data          unsafe.Pointer
@@ -203,32 +176,30 @@ type Tox struct {
 	cb_file_data_user_data         unsafe.Pointer
 }
 
-// fuck,原来这个"//export"是有含义的吗，不是注释。
-//export FortytwoAbc
-func FortytwoAbc() C.int {
-	return C.int(42)
-}
-
-func CalledByCGO() int {
-	return 12
-}
+var cbUserDatas map[*C.Tox]*Tox = make(map[*C.Tox]*Tox, 0)
 
 //export callbackFriendRequestWrapperForC
 func callbackFriendRequestWrapperForC(m *C.Tox, a0 *C.uint8_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
-	var this = (*Tox)(a3)
+	var this = (*Tox)(cbUserDatas[m])
 	if this.cb_friend_request != nil {
-		this.cb_friend_request(this, (*uint8)(a0), (*uint8)(a1), uint16(a2), this.cb_friend_request_user_data)
+		pubkey_b := C.GoBytes(unsafe.Pointer(a0), 32)
+		pubkey := hex.EncodeToString(pubkey_b)
+		pubkey = strings.ToUpper(pubkey)
+		message_b := C.GoBytes(unsafe.Pointer(a1), C.int(a2))
+		message := string(message_b)
+		this.cb_friend_request(this, pubkey, message, this.cb_friend_request_user_data)
 	}
 }
 
-func (this *Tox) CallbackFriendRequest(cbfun cb_friend_request_ftype, userData unsafe.Pointer) {
-	this.cb_friend_request = cbfun
+func (this *Tox) CallbackFriendRequest(cbfn cb_friend_request_ftype, userData unsafe.Pointer) {
+	this.cb_friend_request = cbfn
 	this.cb_friend_request_user_data = userData
 
-	var _cbfun = (C.cb_friend_request_ftype)(C.callbackFriendRequestWrapperForC)
+	var _cbfn = (C.cb_friend_request_ftype)(C.callbackFriendRequestWrapperForC)
 	var _userData = unsafe.Pointer(this)
+	_userData = nil
 
-	C.cb_friend_request_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_friend_request_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackFriendMessageWrapperForC
@@ -239,14 +210,14 @@ func callbackFriendMessageWrapperForC(m *C.Tox, a0 C.int32_t, a1 *C.uint8_t, a2 
 	}
 }
 
-func (this *Tox) CallbackFriendMessage(cbfun cb_friend_message_ftype, userData unsafe.Pointer) {
-	this.cb_friend_message = cbfun
+func (this *Tox) CallbackFriendMessage(cbfn cb_friend_message_ftype, userData unsafe.Pointer) {
+	this.cb_friend_message = cbfn
 	this.cb_friend_message_user_data = userData
 
-	var _cbfun = (C.cb_friend_message_ftype)(C.callbackFriendMessageWrapperForC)
+	var _cbfn = (C.cb_friend_message_ftype)(C.callbackFriendMessageWrapperForC)
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_friend_message_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_friend_message_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackNameChangeWrapperForC
@@ -257,14 +228,14 @@ func callbackNameChangeWrapperForC(m *C.Tox, a0 C.int32_t, a1 *C.uint8_t, a2 C.u
 	}
 }
 
-func (this *Tox) CallbackNameChange(cbfun cb_name_change_ftype, userData unsafe.Pointer) {
-	this.cb_name_change = cbfun
+func (this *Tox) CallbackNameChange(cbfn cb_name_change_ftype, userData unsafe.Pointer) {
+	this.cb_name_change = cbfn
 	this.cb_name_change_user_data = userData
 
-	var _cbfun = (C.cb_name_change_ftype)(C.callbackNameChangeWrapperForC)
+	var _cbfn = (C.cb_name_change_ftype)(C.callbackNameChangeWrapperForC)
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_name_change_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_name_change_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackStatusMessageWrapperForC
@@ -275,14 +246,14 @@ func callbackStatusMessageWrapperForC(m *C.Tox, a0 C.int32_t, a1 *C.uint8_t, a2 
 	}
 }
 
-func (this *Tox) CallbackStatusMessage(cbfun cb_status_message_ftype, userData unsafe.Pointer) {
-	this.cb_status_message = cbfun
+func (this *Tox) CallbackStatusMessage(cbfn cb_status_message_ftype, userData unsafe.Pointer) {
+	this.cb_status_message = cbfn
 	this.cb_status_message_user_data = userData
 
-	var _cbfun = (C.cb_status_message_ftype)(C.callbackStatusMessageWrapperForC)
+	var _cbfn = (C.cb_status_message_ftype)(C.callbackStatusMessageWrapperForC)
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_status_message_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_status_message_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackUserStatusWrapperForC
@@ -293,14 +264,14 @@ func callbackUserStatusWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 unsa
 	}
 }
 
-func (this *Tox) CallbackUserStatus(cbfun cb_user_status_ftype, userData unsafe.Pointer) {
-	this.cb_user_status = cbfun
+func (this *Tox) CallbackUserStatus(cbfn cb_user_status_ftype, userData unsafe.Pointer) {
+	this.cb_user_status = cbfn
 	this.cb_user_status_user_data = userData
 
-	var _cbfun = (C.cb_user_status_ftype)(C.callbackUserStatusWrapperForC)
+	var _cbfn = (C.cb_user_status_ftype)(C.callbackUserStatusWrapperForC)
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_user_status_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_user_status_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackTypingChangeWrapperForC
@@ -311,50 +282,50 @@ func callbackTypingChangeWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 un
 	}
 }
 
-func (this *Tox) CallbackTypingChange(cbfun cb_typing_change_ftype, userData unsafe.Pointer) {
-	this.cb_typing_change = cbfun
+func (this *Tox) CallbackTypingChange(cbfn cb_typing_change_ftype, userData unsafe.Pointer) {
+	this.cb_typing_change = cbfn
 	this.cb_typing_change_user_data = userData
 
-	var _cbfun = (C.cb_typing_change_ftype)(C.callbackTypingChangeWrapperForC)
+	var _cbfn = (C.cb_typing_change_ftype)(C.callbackTypingChangeWrapperForC)
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_typing_change_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_typing_change_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackReadReceiptWrapperForC
 func callbackReadReceiptWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
-	var this = (*Tox)(a2)
+	var this = cbUserDatas[m]
 	if this.cb_read_receipt != nil {
 		this.cb_read_receipt(this, uint32(a0), uint32(a1), this.cb_read_receipt_user_data)
 	}
 }
 
-func (this *Tox) CallbackReadReceipt(cbfun cb_read_receipt_ftype, userData unsafe.Pointer) {
-	this.cb_read_receipt = cbfun
+func (this *Tox) CallbackReadReceipt(cbfn cb_read_receipt_ftype, userData unsafe.Pointer) {
+	this.cb_read_receipt = cbfn
 	this.cb_read_receipt_user_data = userData
 
-	var _cbfun = (C.cb_read_receipt_ftype)(C.callbackReadReceiptWrapperForC)
+	var _cbfn = (C.cb_read_receipt_ftype)(C.callbackReadReceiptWrapperForC)
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_read_receipt_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_read_receipt_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-//export callbackConnectionStatusWrapperForC
-func callbackConnectionStatusWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
-	var this = (*Tox)(a2)
-	if this.cb_connection_status != nil {
-		this.cb_connection_status(this, uint32(a0), uint8(a1), this.cb_connection_status_user_data)
+//export callbackSelfConnectionStatusWrapperForC
+func callbackSelfConnectionStatusWrapperForC(m *C.Tox, status C.int32_t, a2 unsafe.Pointer) {
+	var this = cbUserDatas[m]
+	if this.cb_self_connection_status != nil {
+		this.cb_self_connection_status(this, uint32(status), this.cb_self_connection_status_user_data)
 	}
 }
 
-func (this *Tox) CallbackConnectionStatus(cbfun cb_connection_status_ftype, userData unsafe.Pointer) {
-	this.cb_connection_status = cbfun
-	this.cb_connection_status_user_data = userData
+func (this *Tox) CallbackSelfConnectionStatus(cbfn cb_self_connection_status_ftype, userData unsafe.Pointer) {
+	this.cb_self_connection_status = cbfn
+	this.cb_self_connection_status_user_data = userData
 
-	var _cbfun = (C.cb_connection_status_ftype)(C.callbackConnectionStatusWrapperForC)
-	var _userData = unsafe.Pointer(this)
+	var _cbfn = (C.cb_self_connection_status_ftype)(C.callbackSelfConnectionStatusWrapperForC)
+	// var _userData = unsafe.Pointer(this)
 
-	C.cb_connection_status_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_self_connection_status_wrapper_for_go(this.toxcore, _cbfn, nil)
 }
 
 //export callbackGroupInviteWrapperForC
@@ -365,13 +336,13 @@ func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.
 	}
 }
 
-func (this *Tox) CallbackGroupInvite(cbfun cb_group_invite_ftype, userData unsafe.Pointer) {
-	this.cb_group_invite = cbfun
+func (this *Tox) CallbackGroupInvite(cbfn cb_group_invite_ftype, userData unsafe.Pointer) {
+	this.cb_group_invite = cbfn
 	this.cb_group_invite_user_data = userData
 
-	var _cbfun = (C.cb_group_invite_ftype)(C.callbackGroupInviteWrapperForC)
+	var _cbfn = (C.cb_group_invite_ftype)(C.callbackGroupInviteWrapperForC)
 	var _userData = unsafe.Pointer(this)
-	C.cb_group_invite_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_group_invite_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackGroupMessageWrapperForC
@@ -382,13 +353,13 @@ func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t
 	}
 }
 
-func (this *Tox) CallbackGroupMessage(cbfun cb_group_message_ftype, userData unsafe.Pointer) {
-	this.cb_group_message = cbfun
+func (this *Tox) CallbackGroupMessage(cbfn cb_group_message_ftype, userData unsafe.Pointer) {
+	this.cb_group_message = cbfn
 	this.cb_group_message_user_data = userData
 
-	var _cbfun = (C.cb_group_message_ftype)(C.callbackGroupMessageWrapperForC)
+	var _cbfn = (C.cb_group_message_ftype)(C.callbackGroupMessageWrapperForC)
 	var _userData = unsafe.Pointer(this)
-	C.cb_group_message_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_group_message_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackGroupActionWrapperForC
@@ -399,13 +370,13 @@ func callbackGroupActionWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t,
 	}
 }
 
-func (this *Tox) CallbackGroupAction(cbfun cb_group_action_ftype, userData unsafe.Pointer) {
-	this.cb_group_action = cbfun
+func (this *Tox) CallbackGroupAction(cbfn cb_group_action_ftype, userData unsafe.Pointer) {
+	this.cb_group_action = cbfn
 	this.cb_group_action_user_data = userData
 
-	var _cbfun = (C.cb_group_action_ftype)(C.callbackGroupActionWrapperForC)
+	var _cbfn = (C.cb_group_action_ftype)(C.callbackGroupActionWrapperForC)
 	var _userData = unsafe.Pointer(this)
-	C.cb_group_action_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_group_action_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackGroupTitleWrapperForC
@@ -416,13 +387,13 @@ func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, 
 	}
 }
 
-func (this *Tox) CallbackGroupTitle(cbfun cb_group_title_ftype, userData unsafe.Pointer) {
-	this.cb_group_title = cbfun
+func (this *Tox) CallbackGroupTitle(cbfn cb_group_title_ftype, userData unsafe.Pointer) {
+	this.cb_group_title = cbfn
 	this.cb_group_title_user_data = userData
 
-	var _cbfun = (C.cb_group_title_ftype)(C.callbackGroupTitleWrapperForC)
+	var _cbfn = (C.cb_group_title_ftype)(C.callbackGroupTitleWrapperForC)
 	var _userData = unsafe.Pointer(this)
-	C.cb_group_title_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_group_title_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackGroupNameListChangeWrapperForC
@@ -433,14 +404,14 @@ func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 C.u
 	}
 }
 
-func (this *Tox) CallbackGroupNameListChange(cbfun cb_group_namelist_change_ftype, userData unsafe.Pointer) {
-	this.cb_group_namelist_change = cbfun
+func (this *Tox) CallbackGroupNameListChange(cbfn cb_group_namelist_change_ftype, userData unsafe.Pointer) {
+	this.cb_group_namelist_change = cbfn
 	this.cb_group_namelist_change_user_data = userData
 
-	var _cbfun = (C.cb_group_namelist_change_ftype)(C.callbackGroupNameListChangeWrapperForC)
+	var _cbfn = (C.cb_group_namelist_change_ftype)(C.callbackGroupNameListChangeWrapperForC)
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_group_namelist_change_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_group_namelist_change_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 // 包内部函数
@@ -456,13 +427,13 @@ func callbackFileSendRequestWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2
 	}
 }
 
-func (this *Tox) CallbackFileSendRequest(cbfun cb_file_send_request_ftype, userData unsafe.Pointer) {
-	this.cb_file_send_request = cbfun
+func (this *Tox) CallbackFileSendRequest(cbfn cb_file_send_request_ftype, userData unsafe.Pointer) {
+	this.cb_file_send_request = cbfn
 	this.cb_file_send_request_user_data = userData
-	var _cbfun = (C.cb_file_send_request_ftype)(unsafe.Pointer(C.callbackFileSendRequestWrapperForC))
+	var _cbfn = (C.cb_file_send_request_ftype)(unsafe.Pointer(C.callbackFileSendRequestWrapperForC))
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_file_send_request_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_file_send_request_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackFileControlWrapperForC
@@ -475,13 +446,13 @@ func callbackFileControlWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 C.u
 	}
 }
 
-func (this *Tox) CallbackFileControl(cbfun cb_file_control_ftype, userData unsafe.Pointer) {
-	this.cb_file_control = cbfun
+func (this *Tox) CallbackFileControl(cbfn cb_file_control_ftype, userData unsafe.Pointer) {
+	this.cb_file_control = cbfn
 	this.cb_file_control_user_data = userData
-	var _cbfun = (C.cb_file_control_ftype)(unsafe.Pointer(C.callbackFileControlWrapperForC))
+	var _cbfn = (C.cb_file_control_ftype)(unsafe.Pointer(C.callbackFileControlWrapperForC))
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_file_control_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_file_control_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackFileDataWrapperForC
@@ -493,37 +464,41 @@ func callbackFileDataWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.uin
 	}
 }
 
-func (this *Tox) CallbackFileData(cbfun cb_file_data_ftype, userData unsafe.Pointer) {
-	this.cb_file_data = cbfun
+func (this *Tox) CallbackFileData(cbfn cb_file_data_ftype, userData unsafe.Pointer) {
+	this.cb_file_data = cbfn
 	this.cb_file_data_user_data = userData
-	var _cbfun = (C.cb_file_data_ftype)(unsafe.Pointer(C.callbackFileDataWrapperForC))
+	var _cbfn = (C.cb_file_data_ftype)(unsafe.Pointer(C.callbackFileDataWrapperForC))
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_file_data_wrapper_for_go(this.toxcore, _cbfun, _userData)
+	C.cb_file_data_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-func TestCCallGo() {
-	log.Println("calling C...")
-	C.test_c_call_go()
-}
-
-func NewTox() *Tox {
-	var opts = NewToxOptions()
-
+func NewTox(opt *ToxOptions) *Tox {
 	var tox = new(Tox)
-	tox.opts = opts
-	tox.toxopts = new(C.struct_Tox_Options)
+	tox.opts = NewToxOptions()
+	if opt != nil {
+		tox.opts = opt
+	}
 
-	tox.toxopts.ipv6_enabled = (C._Bool)(opts.Ipv6_enabled)
-	tox.toxopts.udp_enabled = (C._Bool)(opts.Udp_enabled)
+	tox.toxopts = new(C.struct_Tox_Options)
+	C.tox_options_default(tox.toxopts)
+	tox.toxopts.ipv6_enabled = (C._Bool)(tox.opts.Ipv6_enabled)
+	tox.toxopts.udp_enabled = (C._Bool)(tox.opts.Udp_enabled)
+	if tox.opts.Savedata_data != nil {
+		tox.toxopts.savedata_data = pointer2uint8(C.malloc(C.size_t(len(tox.opts.Savedata_data))))
+		C.memcpy(unsafe.Pointer(tox.toxopts.savedata_data),
+			unsafe.Pointer(&tox.opts.Savedata_data[0]), C.size_t(len(tox.opts.Savedata_data)))
+		tox.toxopts.savedata_length = C.size_t(len(tox.opts.Savedata_data))
+		tox.toxopts.savedata_type = C.TOX_SAVEDATA_TYPE(tox.opts.Savedata_type)
+	}
 
 	var cerr C.TOX_ERR_NEW
 	var toxcore = C.tox_new(tox.toxopts, &cerr)
 	tox.toxcore = toxcore
-
 	if toxcore == nil {
-		log.Println("error:", cerr)
+		log.Panic("error:", cerr)
 	}
+	cbUserDatas[toxcore] = tox
 
 	return tox
 }
@@ -533,62 +508,91 @@ func (this *Tox) Kill() {
 	this.toxcore = nil
 }
 
-// uint32_t tox_do_interval(Tox *tox);
-func (this *Tox) DoInterval() (int32, error) {
+// uint32_t tox_iteration_interval(Tox *tox);
+func (this *Tox) IterationInterval() (int32, error) {
 	r := C.tox_iteration_interval(this.toxcore)
 	return int32(r), nil
 }
 
 /* The main loop that needs to be run in intervals of tox_do_interval() ms. */
-// void tox_do(Tox *tox);
-func (this *Tox) Do() {
+// void tox_iterate(Tox *tox);
+func (this *Tox) Iterate() {
 	C.tox_iterate(this.toxcore)
 }
 
-func (this *Tox) Size() (int32, error) {
+func (this *Tox) GetSavedataSize() int32 {
 	r := C.tox_get_savedata_size(this.toxcore)
-	return int32(r), nil
+	return int32(r)
 }
 
-func (this *Tox) Save(data interface{}) error {
+func (this *Tox) GetSavedata() []byte {
+	r := C.tox_get_savedata_size(this.toxcore)
+	var savedata = make([]byte, int(r))
 
-	return nil
+	C.tox_get_savedata(this.toxcore, bytes2uint8(savedata))
+	return savedata
 }
 
-func (this *Tox) Load(data interface{}, length int32) error {
+/*
+ * @param pubkey hex 64B length
+ */
+func (this *Tox) Bootstrap(addr string, port uint16, pubkey string) (bool, error) {
+	b_pubkey, err := hex.DecodeString(pubkey)
+	if err != nil {
+		log.Panic(err)
+	}
 
-	return nil
-}
-
-func (this *Tox) BootstrapFromAddress(addr string, port uint16, public_key string) (bool, error) {
 	var _addr *C.char = C.CString(addr)
 	defer C.free(unsafe.Pointer(_addr))
 	var _port C.uint16_t = C.uint16_t(port)
-	var _cpubkey *C.char = C.CString(public_key)
-	defer C.free(unsafe.Pointer(_cpubkey))
+	var _cpubkey *C.char = (*C.char)(unsafe.Pointer(&b_pubkey[0]))
 
 	var cerr C.TOX_ERR_BOOTSTRAP
 	r := C.tox_bootstrap(this.toxcore, _addr, _port, char2uint8(_cpubkey), &cerr)
 	return bool(r), nil
 }
 
-func (this *Tox) GetAddress(addr interface{}) error {
-	return nil
+func (this *Tox) SelfGetAddress() string {
+	var addr [C.TOX_ADDRESS_SIZE]byte
+	var caddr = (*C.char)(unsafe.Pointer(&addr[0]))
+	C.tox_self_get_address(this.toxcore, char2uint8(caddr))
+
+	haddr := hex.EncodeToString(addr[0:])
+	return strings.ToUpper(haddr)
 }
 
-// int32_t tox_add_friend(Tox *tox, const uint8_t *address, const uint8_t *data, uint16_t length);
-func (this *Tox) AddFriend(addr interface{}, data interface{}, length int32) (int32, error) {
-
-	return 1, nil
+func (this *Tox) SelfGetConnectionStatus() int {
+	r := C.tox_self_get_connection_status(this.toxcore)
+	return int(r)
 }
 
-func (this *Tox) AddFriendNoRequest(public_key string) (int32, error) {
-	var _pubkey = C.CString(public_key)
-	defer C.free(unsafe.Pointer(_pubkey))
+// int32_t tox_friend_add(Tox *tox, const uint8_t *address, const uint8_t *data, uint16_t length);
+func (this *Tox) FriendAdd(friendId string, message string) (uint32, error) {
+	friendId_b, err := hex.DecodeString(friendId)
+	friendId_p := unsafe.Pointer(&friendId_b[0])
+	if err != nil {
+		log.Panic(err)
+	}
+
+	cmessage := C.CString(message)
+	defer C.free(unsafe.Pointer(cmessage))
 
 	var cerr C.TOX_ERR_FRIEND_ADD
-	r := C.tox_friend_add_norequest(this.toxcore, char2uint8(_pubkey), &cerr)
-	return int32(r), nil
+	r := C.tox_friend_add(this.toxcore, pointer2uint8(friendId_p),
+		char2uint8(cmessage), C.size_t(len(message)), &cerr)
+	return uint32(r), nil
+}
+
+func (this *Tox) FriendAddNorequest(friendId string) (uint32, error) {
+	friendId_b, err := hex.DecodeString(friendId)
+	friendId_p := unsafe.Pointer(&friendId_b[0])
+	if err != nil {
+		log.Panic(err)
+	}
+
+	var cerr C.TOX_ERR_FRIEND_ADD
+	r := C.tox_friend_add_norequest(this.toxcore, pointer2uint8(friendId_p), &cerr)
+	return uint32(r), nil
 }
 
 func (this *Tox) GetFriendNumber(public_key string) (int32, error) {
@@ -811,22 +815,26 @@ func (this *Tox) SetNospam(nospam uint32) {
 	C.tox_self_set_nospam(this.toxcore, _nospam)
 }
 
-func (this *Tox) SelfGetPublicKey() (string, error) {
+func (this *Tox) SelfGetPublicKey() string {
 	var _pubkey = (*C.char)(C.malloc(32))
 	defer C.free(unsafe.Pointer(_pubkey))
 
 	C.tox_self_get_public_key(this.toxcore, char2uint8(_pubkey))
-	b_pubkey := C.GoBytes(_pubkey, 32)
-	return hex.EncodeToString(b_pubkey), nil
+	b_pubkey := C.GoBytes(unsafe.Pointer(_pubkey), 32)
+	h_pubkey := hex.EncodeToString(b_pubkey)
+
+	return strings.ToUpper(h_pubkey)
 }
 
-func (this *Tox) SelfGetSecretKey() (string, error) {
+func (this *Tox) SelfGetSecretKey() string {
 	var _seckey = (*C.char)(C.malloc(32))
 	defer C.free(unsafe.Pointer(_seckey))
 
 	C.tox_self_get_secret_key(this.toxcore, char2uint8(_seckey))
-	b_seckey := C.GoBytes(_seckey, 32)
-	return hex.EncodeToString(b_seckey), nil
+	b_seckey := C.GoBytes(unsafe.Pointer(_seckey), 32)
+	h_seckey := hex.EncodeToString(b_seckey)
+
+	return strings.ToUpper(h_seckey)
 }
 
 // tox_lossy_***
@@ -1056,8 +1064,14 @@ func (this *Tox) AddTcpRelay(addr string, port uint16, pubkey string) (bool, err
 	var _addr = C.CString(addr)
 	defer C.free(unsafe.Pointer(_addr))
 	var _port = C.uint16_t(port)
-	var _pubkey = C.CString(pubkey)
-	defer C.free(unsafe.Pointer(_pubkey))
+	b_pubkey, err := hex.DecodeString(pubkey)
+	if err != nil {
+		log.Panic(err)
+	}
+	if strings.ToUpper(hex.EncodeToString(b_pubkey)) != pubkey {
+		log.Panic("wtf, hex enc/dec err")
+	}
+	var _pubkey = (*C.char)(unsafe.Pointer(&b_pubkey[0]))
 
 	var cerr C.TOX_ERR_BOOTSTRAP
 	r := C.tox_add_tcp_relay(this.toxcore, _addr, _port, char2uint8(_pubkey), &cerr)
