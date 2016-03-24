@@ -20,6 +20,8 @@ var server = []interface{}{
 }
 var fname = "./toxecho.data"
 var debug = false
+var nickPrefix = "EchoBot."
+var statusText = "Send me text, file, audio, video."
 
 func main() {
 	opt := tox.NewToxOptions()
@@ -32,6 +34,7 @@ func main() {
 			opt.Savedata_type = tox.SAVEDATA_TYPE_TOX_SAVE
 		}
 	}
+	opt.Tcp_port = 33445
 	t := tox.NewTox(opt)
 
 	r, err := t.Bootstrap(server[0].(string), server[1].(uint16), server[2].(string))
@@ -46,7 +49,10 @@ func main() {
 		log.Println("savedata:", sz, t)
 		log.Println("savedata", len(sd), t)
 	}
-	t.WriteSavedata(fname)
+	err = t.WriteSavedata(fname)
+	if debug {
+		log.Println("savedata write:", err)
+	}
 
 	pubkey := t.SelfGetPublicKey()
 	seckey := t.SelfGetSecretKey()
@@ -56,20 +62,65 @@ func main() {
 	}
 	log.Println("toxid:", toxid)
 
+	defaultName, err := t.SelfGetName()
+	humanName := nickPrefix + toxid[0:5]
+	if humanName != defaultName {
+		t.SelfSetName(humanName)
+	}
+	humanName, err = t.SelfGetName()
+	if debug {
+		log.Println(humanName, defaultName, err)
+	}
+
+	defaultStatusText, err := t.SelfGetStatusMessage()
+	if defaultStatusText != statusText {
+		t.SelfSetStatusMessage(statusText)
+	}
+	if debug {
+		log.Println(statusText, defaultStatusText, err)
+	}
+
 	// callbacks
 	t.CallbackSelfConnectionStatus(func(t *tox.Tox, status uint32, userData unsafe.Pointer) {
 		if debug {
-			log.Println(status, userData)
+			log.Println("on self conn status:", status, userData)
 		}
 	}, nil)
 	t.CallbackFriendRequest(func(t *tox.Tox, friendId string, message string, userData unsafe.Pointer) {
 		log.Println(friendId, message)
 		num, err := t.FriendAddNorequest(friendId)
 		if debug {
-			log.Println(num, err)
+			log.Println("on friend request:", num, err)
 		}
 		if num < 100000 {
 			t.WriteSavedata(fname)
+		}
+	}, nil)
+	t.CallbackFriendMessage(func(t *tox.Tox, friendNumber uint32, message string, userData unsafe.Pointer) {
+		if debug {
+			log.Println("on friend message:", friendNumber, message)
+		}
+		n, err := t.FriendSendMessage(friendNumber, "Re: "+message)
+		if err != nil {
+			log.Println(n, err)
+		}
+	}, nil)
+	t.CallbackFriendConnectionStatus(func(t *tox.Tox, friendNumber uint32, status uint32, userData unsafe.Pointer) {
+		if debug {
+			friendId, err := t.FriendGetPublicKey(friendNumber)
+			log.Println("on friend connection status:", friendNumber, status, friendId, err)
+		}
+	}, nil)
+	t.CallbackFriendStatus(func(t *tox.Tox, friendNumber uint32, status uint8, userData unsafe.Pointer) {
+		if debug {
+			friendId, err := t.FriendGetPublicKey(friendNumber)
+			log.Println("on friend status:", friendNumber, status, friendId, err)
+		}
+	}, nil)
+	t.CallbackFriendStatusMessage(func(t *tox.Tox, friendNumber uint32, statusText string, userData unsafe.Pointer) {
+		if debug {
+			friendId, err := t.FriendGetPublicKey(friendNumber)
+			log.Println("on friend status text:", friendNumber, statusText, friendId, err)
 		}
 	}, nil)
 

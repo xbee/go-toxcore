@@ -2,9 +2,11 @@ package tox
 
 /*
 #include <stdlib.h>
+#include <string.h>
 #include <tox/tox.h>
 */
 import "C"
+import "unsafe"
 
 const (
 	SAVEDATA_TYPE_NONE       = C.TOX_SAVEDATA_TYPE_NONE
@@ -20,6 +22,7 @@ type ToxOptions struct {
 	Proxy_port    uint16
 	Savedata_type int
 	Savedata_data []byte
+	Tcp_port      uint16
 }
 
 func NewToxOptions() *ToxOptions {
@@ -31,8 +34,26 @@ func NewToxOptions() *ToxOptions {
 	opts.Udp_enabled = bool(toxopts.udp_enabled)
 	opts.Proxy_type = int32(toxopts.proxy_type)
 	opts.Proxy_port = uint16(toxopts.proxy_port)
+	opts.Tcp_port = uint16(toxopts.tcp_port)
 
 	return opts
+}
+
+func (this *ToxOptions) toCToxOptions() *C.struct_Tox_Options {
+	toxopts := new(C.struct_Tox_Options)
+	C.tox_options_default(toxopts)
+	toxopts.ipv6_enabled = (C._Bool)(this.Ipv6_enabled)
+	toxopts.udp_enabled = (C._Bool)(this.Udp_enabled)
+	if this.Savedata_data != nil {
+		toxopts.savedata_data = pointer2uint8(C.malloc(C.size_t(len(this.Savedata_data))))
+		C.memcpy(unsafe.Pointer(toxopts.savedata_data),
+			unsafe.Pointer(&this.Savedata_data[0]), C.size_t(len(this.Savedata_data)))
+		toxopts.savedata_length = C.size_t(len(this.Savedata_data))
+		toxopts.savedata_type = C.TOX_SAVEDATA_TYPE(this.Savedata_type)
+	}
+	toxopts.tcp_port = (C.uint16_t)(this.Tcp_port)
+
+	return toxopts
 }
 
 type BootNode struct {

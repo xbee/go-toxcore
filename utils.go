@@ -46,7 +46,8 @@ func SetLogLevel(level int) {
 }
 
 func FileExist(fname string) bool {
-	if _, err := os.Stat(fname); err == os.ErrNotExist {
+	_, err := os.Stat(fname)
+	if err != nil {
 		return false
 	}
 	return true
