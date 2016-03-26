@@ -1,0 +1,9 @@
+package tox
+
+const (
+	FILE_CONTROL_RESUME = 0
+	FILE_CONTROL_PAUSE  = 1
+	FILE_CONTROL_CANCEL = 2
+	FILE_KIND_DATA      = 0
+	FILE_KIND_AVATAR    = 1
+)

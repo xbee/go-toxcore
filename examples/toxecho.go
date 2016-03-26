@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"log"
 	// "os"
+	"strconv"
+	"strings"
 	"time"
 	"unsafe"
 
@@ -43,17 +45,6 @@ func main() {
 		log.Println("bootstrap:", r, err, r2)
 	}
 
-	sz := t.GetSavedataSize()
-	sd := t.GetSavedata()
-	if debug {
-		log.Println("savedata:", sz, t)
-		log.Println("savedata", len(sd), t)
-	}
-	err = t.WriteSavedata(fname)
-	if debug {
-		log.Println("savedata write:", err)
-	}
-
 	pubkey := t.SelfGetPublicKey()
 	seckey := t.SelfGetSecretKey()
 	toxid := t.SelfGetAddress()
@@ -78,6 +69,17 @@ func main() {
 	}
 	if debug {
 		log.Println(statusText, defaultStatusText, err)
+	}
+
+	sz := t.GetSavedataSize()
+	sd := t.GetSavedata()
+	if debug {
+		log.Println("savedata:", sz, t)
+		log.Println("savedata", len(sd), t)
+	}
+	err = t.WriteSavedata(fname)
+	if debug {
+		log.Println("savedata write:", err)
 	}
 
 	// callbacks
@@ -124,6 +126,116 @@ func main() {
 		}
 	}, nil)
 
+	// some vars for file echo
+	var recvFiles = make(map[uint64]uint32, 0)
+	var sendFiles = make(map[uint64]uint32, 0)
+	var sendDatas = make(map[string][]byte, 0)
+	var chunkReqs = make([]string, 0)
+	trySendChunk := func(friendNumber uint32, fileNumber uint32, position uint64) {
+		sentKeys := make(map[string]bool, 0)
+		for _, reqkey := range chunkReqs {
+			lst := strings.Split(reqkey, "_")
+			pos, err := strconv.ParseUint(lst[2], 10, 64)
+			if err != nil {
+			}
+			if data, ok := sendDatas[reqkey]; ok {
+				r, err := t.FileSendChunk(friendNumber, fileNumber, pos, data)
+				if err != nil {
+					if err.Error() == "toxcore error: 7" || err.Error() == "toxcore error: 8" {
+					} else {
+						log.Println("file send chunk error:", err, r, reqkey)
+					}
+					break
+				} else {
+					delete(sendDatas, reqkey)
+					sentKeys[reqkey] = true
+				}
+			}
+		}
+		leftChunkReqs := make([]string, 0)
+		for _, reqkey := range chunkReqs {
+			if _, ok := sentKeys[reqkey]; !ok {
+				leftChunkReqs = append(leftChunkReqs, reqkey)
+			}
+		}
+		chunkReqs = leftChunkReqs
+	}
+	if trySendChunk != nil {
+	}
+
+	t.CallbackFileRecvControl(func(t *tox.Tox, friendNumber uint32, fileNumber uint32,
+		control int, userData unsafe.Pointer) {
+		if debug {
+			friendId, err := t.FriendGetPublicKey(friendNumber)
+			log.Println("on recv file control:", friendNumber, fileNumber, control, friendId, err)
+		}
+		key := uint64(uint64(friendNumber)<<32 | uint64(fileNumber))
+		if control == tox.FILE_CONTROL_RESUME {
+			if fno, ok := sendFiles[key]; ok {
+				t.FileControl(friendNumber, fno, tox.FILE_CONTROL_RESUME)
+			}
+		} else if control == tox.FILE_CONTROL_PAUSE {
+			if fno, ok := sendFiles[key]; ok {
+				t.FileControl(friendNumber, fno, tox.FILE_CONTROL_PAUSE)
+			}
+		} else if control == tox.FILE_CONTROL_CANCEL {
+			if fno, ok := sendFiles[key]; ok {
+				t.FileControl(friendNumber, fno, tox.FILE_CONTROL_CANCEL)
+			}
+		}
+	}, nil)
+	t.CallbackFileRecv(func(t *tox.Tox, friendNumber uint32, fileNumber uint32, kind uint32,
+		fileSize uint64, fileName string, userData unsafe.Pointer) {
+		if debug {
+			friendId, err := t.FriendGetPublicKey(friendNumber)
+			log.Println("on recv file:", friendNumber, fileNumber, kind, fileSize, fileName, friendId, err)
+		}
+		if fileSize > 1024*1024*1024 {
+			// good guy
+		}
+
+		var reFileName = "Re_" + fileName
+		reFileNumber, err := t.FileSend(friendNumber, kind, fileSize, reFileName, reFileName)
+		if err != nil {
+		}
+		recvFiles[uint64(uint64(friendNumber)<<32|uint64(fileNumber))] = reFileNumber
+		sendFiles[uint64(uint64(friendNumber)<<32|uint64(reFileNumber))] = fileNumber
+	}, nil)
+	t.CallbackFileRecvChunk(func(t *tox.Tox, friendNumber uint32, fileNumber uint32,
+		position uint64, data []byte, userData unsafe.Pointer) {
+		friendId, err := t.FriendGetPublicKey(friendNumber)
+		if debug {
+			// log.Println("on recv chunk:", friendNumber, fileNumber, position, len(data), friendId, err)
+		}
+
+		if len(data) == 0 {
+			if debug {
+				log.Println("recv file finished:", friendNumber, fileNumber, friendId, err)
+			}
+		} else {
+			reFileNumber := recvFiles[uint64(uint64(fileNumber)<<32|uint64(fileNumber))]
+			key := makekey(friendNumber, reFileNumber, position)
+			sendDatas[key] = data
+			trySendChunk(friendNumber, reFileNumber, position)
+		}
+	}, nil)
+	t.CallbackFileChunkRequest(func(t *tox.Tox, friendNumber uint32, fileNumber uint32, position uint64,
+		length int, userData unsafe.Pointer) {
+		friendId, err := t.FriendGetPublicKey(friendNumber)
+		if length == 0 {
+			if debug {
+				log.Println("send file finished:", friendNumber, fileNumber, friendId, err)
+			}
+			origFileNumber := sendFiles[uint64(uint64(fileNumber)<<32|uint64(fileNumber))]
+			delete(sendFiles, uint64(uint64(fileNumber)<<32|uint64(fileNumber)))
+			delete(recvFiles, uint64(uint64(fileNumber)<<32|uint64(origFileNumber)))
+		} else {
+			key := makekey(friendNumber, fileNumber, position)
+			chunkReqs = append(chunkReqs, key)
+			trySendChunk(friendNumber, fileNumber, position)
+		}
+	}, nil)
+
 	// loops
 	shutdown := false
 	loopc := 0
@@ -146,6 +258,10 @@ func main() {
 	}
 
 	t.Kill()
+}
+
+func makekey(no uint32, a0 interface{}, a1 interface{}) string {
+	return fmt.Sprintf("%d_%v_%v", no, a0, a1)
 }
 
 func _dirty_init() {

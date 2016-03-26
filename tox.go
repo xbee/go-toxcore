@@ -91,6 +91,34 @@ typedef void (*cb_group_namelist_change_ftype)(Tox*, int, int, uint8_t, void*);
 static void cb_group_namelist_change_wrapper_for_go(Tox *m, cb_group_namelist_change_ftype fn, void *userdata)
 { tox_callback_group_namelist_change(m, fn, userdata); }
 
+void callbackFileRecvControlWrapperForC(Tox *tox, uint32_t friend_number, uint32_t file_number,
+                                      TOX_FILE_CONTROL control, void *user_data);
+typedef void (*cb_file_recv_control_ftype)(Tox *tox, uint32_t friend_number, uint32_t file_number,
+                                      TOX_FILE_CONTROL control, void *useer_data);
+static void cb_file_recv_control_wrapper_for_go(Tox *m, cb_file_recv_control_ftype fn, void *userdata)
+{ tox_callback_file_recv_control(m, fn, userdata); }
+
+void callbackFileRecvWrapperForC(Tox *tox, uint32_t friend_number, uint32_t file_number, uint32_t kind,
+                               uint64_t file_size, uint8_t *filename, size_t filename_length, void *user_data);
+typedef void (*cb_file_recv_ftype)(Tox *tox, uint32_t friend_number, uint32_t file_number, uint32_t kind,
+              uint64_t file_size, const uint8_t *filename, size_t filename_length, void *user_data);
+static void cb_file_recv_wrapper_for_go(Tox *m, cb_file_recv_ftype fn, void *userdata)
+{ tox_callback_file_recv(m, fn, userdata); }
+
+void callbackFileRecvChunkWrapperForC(Tox *tox, uint32_t friend_number, uint32_t file_number, uint64_t position,
+                                    uint8_t *data, size_t length, void *user_data);
+typedef void (*cb_file_recv_chunk_ftype)(Tox *tox, uint32_t friend_number, uint32_t file_number, uint64_t position,
+                                    uint8_t *data, size_t length, void *user_data);
+static void cb_file_recv_chunk_wrapper_for_go(Tox *m, cb_file_recv_chunk_ftype fn, void *userdata)
+{ tox_callback_file_recv_chunk(m, fn, userdata); }
+
+void callbackFileChunkRequestWrapperForC(Tox *tox, uint32_t friend_number, uint32_t file_number, uint64_t position,
+                                       size_t length, void *user_data);
+typedef void (*cb_file_chunk_request_ftype)(Tox *tox, uint32_t friend_number, uint32_t file_number, uint64_t position,
+                                       size_t length, void *user_data);
+static void cb_file_chunk_request_wrapper_for_go(Tox *m, cb_file_chunk_request_ftype fn, void *userdata)
+{ tox_callback_file_chunk_request(m, fn, userdata); }
+
 // 下面的extern行不是必须的，除非这个对应的go函数在其他的文件中，或者要在go中引用它。
 // 声明go语言层的回调封装函数原型
 void callbackFileSendRequestWrapperForC(Tox*, int32_t, uint8_t, uint64_t, uint8_t*, uint16_t, void*);
@@ -100,21 +128,12 @@ typedef void (*cb_file_send_request_ftype)(Tox*, int32_t, uint8_t, uint64_t, uin
 static void cb_file_send_request_wrapper_for_go(Tox *m, cb_file_send_request_ftype fn, void *userdata)
 { tox_callback_file_chunk_request(m, fn, userdata); }
 
-void callbackFileControlWrapperForC(Tox*, int32_t, uint8_t, uint8_t, uint8_t, uint8_t*, uint16_t, void*);
-typedef void (*cb_file_control_ftype)(Tox*, int32_t, uint8_t, uint8_t, uint8_t, uint8_t*, uint16_t, void*);
-static void cb_file_control_wrapper_for_go(Tox *m, cb_file_control_ftype fn, void *userdata)
-{ tox_callback_file_recv_control(m, fn, userdata); }
-
-void callbackFileDataWrapperForC(Tox*, int32_t, uint8_t, uint8_t*, uint16_t, void*);
-typedef void (*cb_file_data_ftype)(Tox*, int32_t, uint8_t, uint8_t*, uint16_t, void*);
-static void cb_file_data_wrapper_for_go(Tox *m, cb_file_data_ftype fn, void *userdata)
-{ tox_callback_file_recv_chunk(m, fn, userdata); }
 
 */
 import "C"
 
 //////////
-// friend cb type
+// friend callback type
 type cb_friend_request_ftype func(this *Tox, pubkey string, message string, userData unsafe.Pointer)
 type cb_friend_message_ftype func(this *Tox, friendNumber uint32, message string, userData unsafe.Pointer)
 type cb_name_change_ftype func(this *Tox, friendNumber uint32, newName *uint8, length uint16, userData unsafe.Pointer)
@@ -125,20 +144,22 @@ type cb_typing_change_ftype func(this *Tox, friendNumber uint32, isTyping uint8,
 type cb_read_receipt_ftype func(this *Tox, friendNumber uint32, receipt uint32, userData unsafe.Pointer)
 type cb_self_connection_status_ftype func(this *Tox, status uint32, userData unsafe.Pointer)
 
-// group cb type
+// group callback type
 type cb_group_invite_ftype func(this *Tox, friendNumber uint32, itype uint8, data *uint8, length uint16, userData unsafe.Pointer)
 type cb_group_message_ftype func(this *Tox, groupNumber int, peerNumber int, message *uint8, length uint16, userData unsafe.Pointer)
 type cb_group_action_ftype func(this *Tox, groupNumber int, peerNumber int, action *uint8, length uint16, userData unsafe.Pointer)
 type cb_group_title_ftype func(this *Tox, groupNumber int, peerNumber int, title *uint8, length uint8, userData unsafe.Pointer)
 type cb_group_namelist_change_ftype func(this *Tox, groupNumber int, peerNumber int, change uint8, userData unsafe.Pointer)
 
-// file cb type
-type cb_file_send_request_ftype func(this *Tox, friendNumber uint32, fileNumber uint8, fileSize uint64,
-	fileName *uint8, fileNameLength uint16, userData unsafe.Pointer)
-type cb_file_control_ftype func(this *Tox, friendNumber uint32, recieveSend uint8, fileNumber uint8,
-	controlType uint8, data *uint8, length uint16, userData unsafe.Pointer)
-type cb_file_data_ftype func(this *Tox, friendNumber uint32, fileNumber uint8, data *uint8,
-	length uint16, userData unsafe.Pointer)
+// file callback type
+type cb_file_recv_control_ftype func(this *Tox, friendNumber uint32, fileNumber uint32,
+	control int, userData unsafe.Pointer)
+type cb_file_recv_ftype func(this *Tox, friendNumber uint32, fileNumber uint32, kind uint32, fileSize uint64,
+	fileName string, userData unsafe.Pointer)
+type cb_file_recv_chunk_ftype func(this *Tox, friendNumber uint32, fileNumber uint32, position uint64,
+	data []byte, userData unsafe.Pointer)
+type cb_file_chunk_request_ftype func(this *Tox, friend_number uint32, file_number uint32, position uint64,
+	length int, user_data unsafe.Pointer)
 
 type Tox struct {
 	opts    *ToxOptions
@@ -176,12 +197,14 @@ type Tox struct {
 	cb_group_namelist_change           cb_group_namelist_change_ftype
 	cb_group_namelist_change_user_data unsafe.Pointer
 
-	cb_file_send_request           cb_file_send_request_ftype
-	cb_file_send_request_user_data unsafe.Pointer
-	cb_file_control                cb_file_control_ftype
-	cb_file_control_user_data      unsafe.Pointer
-	cb_file_data                   cb_file_data_ftype
-	cb_file_data_user_data         unsafe.Pointer
+	cb_file_recv_control            cb_file_recv_control_ftype
+	cb_file_recv_control_user_data  unsafe.Pointer
+	cb_file_recv                    cb_file_recv_ftype
+	cb_file_recv_user_data          unsafe.Pointer
+	cb_file_recv_chunk              cb_file_recv_chunk_ftype
+	cb_file_recv_chunk_user_data    unsafe.Pointer
+	cb_file_chunk_request           cb_file_chunk_request_ftype
+	cb_file_chunk_request_user_data unsafe.Pointer
 }
 
 var cbUserDatas map[*C.Tox]*Tox = make(map[*C.Tox]*Tox, 0)
@@ -443,62 +466,82 @@ func (this *Tox) CallbackGroupNameListChange(cbfn cb_group_namelist_change_ftype
 }
 
 // 包内部函数
-//export callbackFileSendRequestWrapperForC
-func callbackFileSendRequestWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 C.uint64_t,
-	a3 *C.uint8_t, a4 C.uint16_t, a5 unsafe.Pointer) {
-	var this = (*Tox)(a5)
-	log.Println("called from c code", this)
-	log.Println(m, a0, a1, a2, a3, a4, a5)
-	if this.cb_file_send_request != nil {
-		this.cb_file_send_request(this, uint32(a0), uint8(a1), uint64(a2), (*uint8)(a3),
-			uint16(a4), this.cb_file_send_request_user_data)
+//export callbackFileRecvControlWrapperForC
+func callbackFileRecvControlWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
+	control C.TOX_FILE_CONTROL, userData unsafe.Pointer) {
+	var this = (*Tox)(cbUserDatas[m])
+	if this.cb_file_recv_control != nil {
+		this.cb_file_recv_control(this, uint32(friendNumber), uint32(fileNumber),
+			int(control), userData)
 	}
 }
 
-func (this *Tox) CallbackFileSendRequest(cbfn cb_file_send_request_ftype, userData unsafe.Pointer) {
-	this.cb_file_send_request = cbfn
-	this.cb_file_send_request_user_data = userData
-	var _cbfn = (C.cb_file_send_request_ftype)(unsafe.Pointer(C.callbackFileSendRequestWrapperForC))
-	var _userData = unsafe.Pointer(this)
+func (this *Tox) CallbackFileRecvControl(cbfn cb_file_recv_control_ftype, userData unsafe.Pointer) {
+	this.cb_file_recv_control = cbfn
+	this.cb_file_recv_control_user_data = userData
+	var _cbfn = (C.cb_file_recv_control_ftype)(unsafe.Pointer(C.callbackFileRecvControlWrapperForC))
+	var _userData unsafe.Pointer = nil
 
-	C.cb_file_send_request_wrapper_for_go(this.toxcore, _cbfn, _userData)
+	C.cb_file_recv_control_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-//export callbackFileControlWrapperForC
-func callbackFileControlWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 C.uint8_t, a3 C.uint8_t,
-	a4 *C.uint8_t, a5 C.uint16_t, a6 unsafe.Pointer) {
-	var this = (*Tox)(a6)
-	if this.cb_file_control != nil {
-		this.cb_file_control(this, uint32(a0), uint8(a1), uint8(a2), uint8(a3),
-			(*uint8)(a4), uint16(a5), this.cb_file_control_user_data)
+//export callbackFileRecvWrapperForC
+func callbackFileRecvWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t, kind C.uint32_t,
+	fileSize C.uint64_t, fileName *C.uint8_t, fileNameLength C.size_t, userData unsafe.Pointer) {
+	var this = (*Tox)(cbUserDatas[m])
+	if this.cb_file_recv != nil {
+		fileName_ := C.GoStringN((*C.char)(unsafe.Pointer(fileName)), C.int(fileNameLength))
+		this.cb_file_recv(this, uint32(friendNumber), uint32(fileNumber), uint32(kind),
+			uint64(fileSize), fileName_, userData)
 	}
 }
 
-func (this *Tox) CallbackFileControl(cbfn cb_file_control_ftype, userData unsafe.Pointer) {
-	this.cb_file_control = cbfn
-	this.cb_file_control_user_data = userData
-	var _cbfn = (C.cb_file_control_ftype)(unsafe.Pointer(C.callbackFileControlWrapperForC))
-	var _userData = unsafe.Pointer(this)
+func (this *Tox) CallbackFileRecv(cbfn cb_file_recv_ftype, userData unsafe.Pointer) {
+	this.cb_file_recv = cbfn
+	this.cb_file_recv_user_data = userData
+	var _cbfn = (C.cb_file_recv_ftype)(unsafe.Pointer(C.callbackFileRecvWrapperForC))
+	var _userData unsafe.Pointer = nil
 
-	C.cb_file_control_wrapper_for_go(this.toxcore, _cbfn, _userData)
+	C.cb_file_recv_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-//export callbackFileDataWrapperForC
-func callbackFileDataWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.uint8_t, a3 C.uint16_t,
-	a4 unsafe.Pointer) {
-	var this = (*Tox)(a4)
-	if this.cb_file_data != nil {
-		this.cb_file_data(this, uint32(a0), uint8(a1), (*uint8)(a2), uint16(a3), this.cb_file_data_user_data)
+//export callbackFileRecvChunkWrapperForC
+func callbackFileRecvChunkWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
+	position C.uint64_t, data *C.uint8_t, length C.size_t, userData unsafe.Pointer) {
+	var this = (*Tox)(cbUserDatas[m])
+	if this.cb_file_recv != nil {
+		data_ := C.GoBytes((unsafe.Pointer)(data), C.int(length))
+		this.cb_file_recv_chunk(this, uint32(friendNumber), uint32(fileNumber), uint64(position),
+			data_, userData)
 	}
 }
 
-func (this *Tox) CallbackFileData(cbfn cb_file_data_ftype, userData unsafe.Pointer) {
-	this.cb_file_data = cbfn
-	this.cb_file_data_user_data = userData
-	var _cbfn = (C.cb_file_data_ftype)(unsafe.Pointer(C.callbackFileDataWrapperForC))
-	var _userData = unsafe.Pointer(this)
+func (this *Tox) CallbackFileRecvChunk(cbfn cb_file_recv_chunk_ftype, userData unsafe.Pointer) {
+	this.cb_file_recv_chunk = cbfn
+	this.cb_file_recv_chunk_user_data = userData
+	var _cbfn = (C.cb_file_recv_chunk_ftype)(unsafe.Pointer(C.callbackFileRecvChunkWrapperForC))
+	var _userData unsafe.Pointer = nil
 
-	C.cb_file_data_wrapper_for_go(this.toxcore, _cbfn, _userData)
+	C.cb_file_recv_chunk_wrapper_for_go(this.toxcore, _cbfn, _userData)
+}
+
+//export callbackFileChunkRequestWrapperForC
+func callbackFileChunkRequestWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
+	position C.uint64_t, length C.size_t, userData unsafe.Pointer) {
+	var this = (*Tox)(cbUserDatas[m])
+	if this.cb_file_recv != nil {
+		this.cb_file_chunk_request(this, uint32(friendNumber), uint32(fileNumber), uint64(position),
+			int(length), userData)
+	}
+}
+
+func (this *Tox) CallbackFileChunkRequest(cbfn cb_file_chunk_request_ftype, userData unsafe.Pointer) {
+	this.cb_file_chunk_request = cbfn
+	this.cb_file_chunk_request_user_data = userData
+	var _cbfn = (C.cb_file_chunk_request_ftype)(unsafe.Pointer(C.callbackFileChunkRequestWrapperForC))
+	var _userData unsafe.Pointer = nil
+
+	C.cb_file_chunk_request_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 func NewTox(opt *ToxOptions) *Tox {
@@ -1023,63 +1066,52 @@ func (this *Tox) Hash(hash string, data string, datalen uint32) (bool, error) {
 }
 
 // tox_callback_file_***
-
-func (this *Tox) NewFileSender(friendNumber uint32, fileSize uint64, fileName string, fnlen uint16) (int, error) {
-	// var _fn = C.int32_t(friendNumber)
-	// var _fileSize = C.uint64_t(fileSize)
-	// var _fileName = C.CString(fileName)
-	// defer C.free(unsafe.Pointer(_fileName))
-	// var _fnlen = C.uint16_t(fnlen)
-
-	// r := C.tox_new_file_sender(this.toxcore, _fn, _fileSize, char2uint8(_fileName), _fnlen)
-	// return int(r), nil
-	return 0, nil
+func (this *Tox) FileControl(friendNumber uint32, fileNumber uint32, control int) (bool, error) {
+	var cerr C.TOX_ERR_FILE_CONTROL
+	r := C.tox_file_control(this.toxcore, C.uint32_t(friendNumber), C.uint32_t(fileNumber),
+		C.TOX_FILE_CONTROL(control), &cerr)
+	return bool(r), nil
 }
 
-func (this *Tox) FileSendControl(friendNumber uint32, sendReceive uint8, fileNumber uint8,
-	messageId uint8, data string, length uint16) (int, error) {
-	// var _fn = C.int32_t(friendNumber)
-	// var _sendReceive = C.uint8_t(sendReceive)
-	// var _fileNumber = C.uint8_t(fileNumber)
-	// var _messageId = C.uint8_t(messageId)
-	// var _data = C.CString(data)
-	// defer C.free(unsafe.Pointer(_data))
-	// var _length = C.uint16_t(length)
+func (this *Tox) FileSend(friendNumber uint32, kind uint32, fileSize uint64, fileId string, fileName string) (uint32, error) {
+	fileName_ := C.CString(fileName)
+	defer C.free(unsafe.Pointer(fileName_))
 
-	// r := C.tox_file_send_control(this.toxcore, _fn, _sendReceive, _fileNumber,
-	// _messageId, char2uint8(_data), _length)
-	// return int(r), nil
-	return 0, nil
+	var cerr C.TOX_ERR_FILE_SEND
+	r := C.tox_file_send(this.toxcore, C.uint32_t(friendNumber), C.uint32_t(kind), C.uint64_t(fileSize),
+		nil, char2uint8(fileName_), C.size_t(len(fileName)), &cerr)
+	return uint32(r), nil
 }
 
-func (this *Tox) FileSendData(friendNumber uint32, fileNumber uint8, data string, length uint16) (int, error) {
-	// var _fn = C.int32_t(friendNumber)
-	// var _fileNumber = C.uint8_t(fileNumber)
-	// var _data = C.CString(data)
-	// defer C.free(unsafe.Pointer(_data))
-	// var _length = C.uint16_t(length)
-
-	// r := C.tox_file_send_data(this.toxcore, _fn, _fileNumber, char2uint8(_data), _length)
-	// return int(r), nil
-	return 0, nil
+func (this *Tox) FileSendChunk(friendNumber uint32, fileNumber uint32, position uint64, data []byte) (bool, error) {
+	var cerr C.TOX_ERR_FILE_SEND_CHUNK
+	r := C.tox_file_send_chunk(this.toxcore, C.uint32_t(friendNumber), C.uint32_t(fileNumber),
+		C.uint64_t(position), pointer2uint8((unsafe.Pointer)(&data[0])), C.size_t(len(data)), &cerr)
+	if !bool(r) {
+		return bool(r), toxerr(cerr)
+	}
+	return bool(r), nil
 }
 
-func (this *Tox) FileDataSize(friendNumber uint32) (int, error) {
-	// var _fn = C.int32_t(friendNumber)
-
-	// r := C.tox_file_data_size(this.toxcore, _fn)
-	// return int(r), nil
-	return 0, nil
+func (this *Tox) FileSeek(friendNumber uint32, fileNumber uint32, position uint64) (bool, error) {
+	var cerr C.TOX_ERR_FILE_SEEK
+	r := C.tox_file_seek(this.toxcore, C.uint32_t(friendNumber), C.uint32_t(fileNumber),
+		C.uint64_t(position), &cerr)
+	return bool(r), nil
 }
 
-func (this *Tox) FileDataRemaining(friendNumber uint32, fileNumber uint8, sendReceive uint8) (uint64, error) {
-	// var _fn = C.int32_t(friendNumber)
-	// var _fileNumber = C.uint8_t(fileNumber)
-	// var _sendReceive = C.uint8_t(sendReceive)
+func (this *Tox) FileGetFileId(friendNumber uint32, fileNumber uint32) (string, error) {
+	var cerr C.TOX_ERR_FILE_GET
+	var fileId_b = make([]byte, C.TOX_FILE_ID_LENGTH)
 
-	// r := C.tox_file_data_remaining(this.toxcore, _fn, _fileNumber, _sendReceive)
-	// return uint64(r), nil
-	return 0, nil
+	r := C.tox_file_get_file_id(this.toxcore, C.uint32_t(fileNumber), C.uint32_t(fileNumber),
+		pointer2uint8((unsafe.Pointer)(&fileId_b[0])), &cerr)
+	if !bool(r) {
+		return "", toxerr(cerr)
+	}
+
+	var fileId_h = strings.ToUpper(hex.EncodeToString(fileId_b))
+	return fileId_h, nil
 }
 
 // boostrap, see upper
