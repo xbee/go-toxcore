@@ -21,27 +21,27 @@ import (
 //////
 
 void callbackFriendRequestWrapperForC(Tox *, uint8_t *, uint8_t *, uint16_t, void*);
-typedef void (*cb_friend_request_ftype)(Tox *, uint8_t *, uint8_t *, uint16_t, void*);
+typedef void (*cb_friend_request_ftype)(Tox *, const uint8_t *, const uint8_t *, size_t, void*);
 static void cb_friend_request_wrapper_for_go(Tox *m, cb_friend_request_ftype fn, void *userdata)
 { tox_callback_friend_request(m, fn, userdata); }
 
-void callbackFriendMessageWrapperForC(Tox *, int32_t, int, uint8_t*, uint16_t, void*);
-typedef void (*cb_friend_message_ftype)(Tox *, int32_t, int, uint8_t*, uint16_t, void*);
+void callbackFriendMessageWrapperForC(Tox *, uint32_t, int, uint8_t*, uint32_t, void*);
+typedef void (*cb_friend_message_ftype)(Tox *, uint32_t, TOX_MESSAGE_TYPE, const uint8_t*, size_t, void*);
 static void cb_friend_message_wrapper_for_go(Tox *m, cb_friend_message_ftype fn, void *userdata)
 { tox_callback_friend_message(m, fn, userdata); }
 
-void callbackNameChangeWrapperForC(Tox *, int32_t, uint8_t*, uint16_t, void*);
-typedef void (*cb_name_change_ftype)(Tox *, int32_t, uint8_t*, uint16_t, void*);
-static void cb_name_change_wrapper_for_go(Tox *m, cb_name_change_ftype fn, void *userdata)
+void callbackFriendNameWrapperForC(Tox *, uint32_t, uint8_t*, uint32_t, void*);
+typedef void (*cb_friend_name_ftype)(Tox *, uint32_t, const uint8_t*, size_t, void*);
+static void cb_friend_name_wrapper_for_go(Tox *m, cb_friend_name_ftype fn, void *userdata)
 { tox_callback_friend_name(m, fn, userdata); }
 
-void callbackFriendStatusMessageWrapperForC(Tox *, int32_t, uint8_t*, uint16_t, void*);
-typedef void (*cb_friend_status_message_ftype)(Tox *, int32_t, uint8_t*, uint16_t, void*);
+void callbackFriendStatusMessageWrapperForC(Tox *, uint32_t, uint8_t*, uint32_t, void*);
+typedef void (*cb_friend_status_message_ftype)(Tox *, uint32_t, const uint8_t*, size_t, void*);
 static void cb_friend_status_message_wrapper_for_go(Tox *m, cb_friend_status_message_ftype fn, void *userdata)
 { tox_callback_friend_status_message(m, fn, userdata); }
 
 void callbackFriendStatusWrapperForC(Tox *, uint32_t, uint8_t, void*);
-typedef void (*cb_friend_status_ftype)(Tox *, uint32_t, uint8_t, void*);
+typedef void (*cb_friend_status_ftype)(Tox *, uint32_t, TOX_USER_STATUS, void*);
 static void cb_friend_status_wrapper_for_go(Tox *m, cb_friend_status_ftype fn, void *userdata)
 { tox_callback_friend_status(m, fn, userdata); }
 
@@ -50,18 +50,18 @@ typedef void (*cb_friend_connection_status_ftype)(Tox *, uint32_t, uint32_t, voi
 static void cb_friend_connection_status_wrapper_for_go(Tox *m, cb_friend_connection_status_ftype fn, void *userdata)
 { tox_callback_friend_connection_status(m, fn, userdata); }
 
-void callbackTypingChangeWrapperForC(Tox *, int32_t, uint8_t, void*);
-typedef void (*cb_typing_change_ftype)(Tox *, int32_t, uint8_t, void*);
-static void cb_typing_change_wrapper_for_go(Tox *m, cb_typing_change_ftype fn, void *userdata)
+void callbackFriendTypingWrapperForC(Tox *, uint32_t, uint8_t, void*);
+typedef void (*cb_friend_typing_ftype)(Tox *, uint32_t, uint8_t, void*);
+static void cb_friend_typing_wrapper_for_go(Tox *m, cb_friend_typing_ftype fn, void *userdata)
 { tox_callback_friend_typing(m, fn, userdata); }
 
-void callbackReadReceiptWrapperForC(Tox *, int32_t, uint32_t, void*);
-typedef void (*cb_read_receipt_ftype)(Tox *, int32_t, uint32_t, void*);
+void callbackReadReceiptWrapperForC(Tox *, uint32_t, uint32_t, void*);
+typedef void (*cb_read_receipt_ftype)(Tox *, uint32_t, uint32_t, void*);
 static void cb_read_receipt_wrapper_for_go(Tox *m, cb_read_receipt_ftype fn, void *userdata)
 { tox_callback_friend_read_receipt(m, fn, userdata); }
 
-void callbackSelfConnectionStatusWrapperForC(Tox *, int32_t, void*);
-typedef void (*cb_self_connection_status_ftype)(Tox *, int32_t, void*);
+void callbackSelfConnectionStatusWrapperForC(Tox *, uint32_t, void*);
+typedef void (*cb_self_connection_status_ftype)(Tox *, TOX_CONNECTION, void*);
 static void cb_self_connection_status_wrapper_for_go(Tox *m, cb_self_connection_status_ftype fn, void *userdata)
 { tox_callback_self_connection_status(m, fn, userdata); }
 
@@ -108,7 +108,7 @@ static void cb_file_recv_wrapper_for_go(Tox *m, cb_file_recv_ftype fn, void *use
 void callbackFileRecvChunkWrapperForC(Tox *tox, uint32_t friend_number, uint32_t file_number, uint64_t position,
                                     uint8_t *data, size_t length, void *user_data);
 typedef void (*cb_file_recv_chunk_ftype)(Tox *tox, uint32_t friend_number, uint32_t file_number, uint64_t position,
-                                    uint8_t *data, size_t length, void *user_data);
+                                    const uint8_t *data, size_t length, void *user_data);
 static void cb_file_recv_chunk_wrapper_for_go(Tox *m, cb_file_recv_chunk_ftype fn, void *userdata)
 { tox_callback_file_recv_chunk(m, fn, userdata); }
 
@@ -119,16 +119,27 @@ typedef void (*cb_file_chunk_request_ftype)(Tox *tox, uint32_t friend_number, ui
 static void cb_file_chunk_request_wrapper_for_go(Tox *m, cb_file_chunk_request_ftype fn, void *userdata)
 { tox_callback_file_chunk_request(m, fn, userdata); }
 
-// 下面的extern行不是必须的，除非这个对应的go函数在其他的文件中，或者要在go中引用它。
-// 声明go语言层的回调封装函数原型
-void callbackFileSendRequestWrapperForC(Tox*, int32_t, uint8_t, uint64_t, uint8_t*, uint16_t, void*);
-// 定义回调函数类型，这样定义后，能够在go语言层引用这种函数指针类型。
-typedef void (*cb_file_send_request_ftype)(Tox*, int32_t, uint8_t, uint64_t, uint8_t*, uint16_t, void*);
-// 定义C语言层的回调实现。
-static void cb_file_send_request_wrapper_for_go(Tox *m, cb_file_send_request_ftype fn, void *userdata)
-{ tox_callback_file_chunk_request(m, fn, userdata); }
-
-
+// fix nouse compile warning
+static inline void fixnouse() {
+    cb_friend_request_wrapper_for_go(NULL, NULL, NULL);
+    cb_friend_message_wrapper_for_go(NULL, NULL, NULL);
+    cb_friend_name_wrapper_for_go(NULL, NULL, NULL);
+    cb_friend_status_message_wrapper_for_go(NULL, NULL, NULL);
+    cb_friend_status_wrapper_for_go(NULL, NULL, NULL);
+    cb_friend_connection_status_wrapper_for_go(NULL, NULL, NULL);
+    cb_friend_typing_wrapper_for_go(NULL, NULL, NULL);
+    cb_read_receipt_wrapper_for_go(NULL, NULL, NULL);
+    cb_self_connection_status_wrapper_for_go(NULL, NULL, NULL);
+    cb_group_invite_wrapper_for_go(NULL, NULL, NULL);
+    cb_group_message_wrapper_for_go(NULL, NULL, NULL);
+    cb_group_action_wrapper_for_go(NULL, NULL, NULL);
+    cb_group_title_wrapper_for_go(NULL, NULL, NULL);
+    cb_group_namelist_change_wrapper_for_go(NULL, NULL, NULL);
+    cb_file_recv_control_wrapper_for_go(NULL, NULL, NULL);
+    cb_file_recv_wrapper_for_go(NULL, NULL, NULL);
+    cb_file_recv_chunk_wrapper_for_go(NULL, NULL, NULL);
+    cb_file_chunk_request_wrapper_for_go(NULL, NULL, NULL);
+}
 */
 import "C"
 
@@ -136,11 +147,11 @@ import "C"
 // friend callback type
 type cb_friend_request_ftype func(this *Tox, pubkey string, message string, userData unsafe.Pointer)
 type cb_friend_message_ftype func(this *Tox, friendNumber uint32, message string, userData unsafe.Pointer)
-type cb_name_change_ftype func(this *Tox, friendNumber uint32, newName *uint8, length uint16, userData unsafe.Pointer)
+type cb_friend_name_ftype func(this *Tox, friendNumber uint32, newName *uint8, length uint16, userData unsafe.Pointer)
 type cb_friend_status_message_ftype func(this *Tox, friendNumber uint32, newStatus string, userData unsafe.Pointer)
 type cb_friend_status_ftype func(this *Tox, friendNumber uint32, status uint8, userData unsafe.Pointer)
 type cb_friend_connection_status_ftype func(this *Tox, friendNumber uint32, status uint32, userData unsafe.Pointer)
-type cb_typing_change_ftype func(this *Tox, friendNumber uint32, isTyping uint8, userData unsafe.Pointer)
+type cb_friend_typing_ftype func(this *Tox, friendNumber uint32, isTyping uint8, userData unsafe.Pointer)
 type cb_read_receipt_ftype func(this *Tox, friendNumber uint32, receipt uint32, userData unsafe.Pointer)
 type cb_self_connection_status_ftype func(this *Tox, status uint32, userData unsafe.Pointer)
 
@@ -171,16 +182,16 @@ type Tox struct {
 	cb_friend_request_user_data           unsafe.Pointer
 	cb_friend_message                     cb_friend_message_ftype
 	cb_friend_message_user_data           unsafe.Pointer
-	cb_name_change                        cb_name_change_ftype
-	cb_name_change_user_data              unsafe.Pointer
+	cb_friend_name                        cb_friend_name_ftype
+	cb_friend_name_user_data              unsafe.Pointer
 	cb_friend_status_message              cb_friend_status_message_ftype
 	cb_friend_status_message_user_data    unsafe.Pointer
 	cb_friend_status                      cb_friend_status_ftype
 	cb_friend_status_user_data            unsafe.Pointer
 	cb_friend_connection_status           cb_friend_connection_status_ftype
 	cb_friend_connection_status_user_data unsafe.Pointer
-	cb_typing_change                      cb_typing_change_ftype
-	cb_typing_change_user_data            unsafe.Pointer
+	cb_friend_typing                      cb_friend_typing_ftype
+	cb_friend_typing_user_data            unsafe.Pointer
 	cb_read_receipt                       cb_read_receipt_ftype
 	cb_read_receipt_user_data             unsafe.Pointer
 	cb_self_connection_status             cb_self_connection_status_ftype
@@ -234,7 +245,8 @@ func (this *Tox) CallbackFriendRequest(cbfn cb_friend_request_ftype, userData un
 }
 
 //export callbackFriendMessageWrapperForC
-func callbackFriendMessageWrapperForC(m *C.Tox, a0 C.int32_t, mtype C.int, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
+func callbackFriendMessageWrapperForC(m *C.Tox, a0 C.uint32_t, mtype C.int,
+	a1 *C.uint8_t, a2 C.uint32_t, a3 unsafe.Pointer) {
 	var this = (*Tox)(cbUserDatas[m])
 	if this.cb_friend_message != nil {
 		message_ := C.GoStringN((*C.char)(unsafe.Pointer(a1)), (C.int)(a2))
@@ -252,26 +264,26 @@ func (this *Tox) CallbackFriendMessage(cbfn cb_friend_message_ftype, userData un
 	C.cb_friend_message_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-//export callbackNameChangeWrapperForC
-func callbackNameChangeWrapperForC(m *C.Tox, a0 C.int32_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
+//export callbackFriendNameWrapperForC
+func callbackFriendNameWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, a2 C.uint32_t, a3 unsafe.Pointer) {
 	var this = (*Tox)(cbUserDatas[m])
-	if this.cb_name_change != nil {
-		this.cb_name_change(this, uint32(a0), (*uint8)(a1), uint16(a2), this.cb_name_change_user_data)
+	if this.cb_friend_name != nil {
+		this.cb_friend_name(this, uint32(a0), (*uint8)(a1), uint16(a2), this.cb_friend_name_user_data)
 	}
 }
 
-func (this *Tox) CallbackNameChange(cbfn cb_name_change_ftype, userData unsafe.Pointer) {
-	this.cb_name_change = cbfn
-	this.cb_name_change_user_data = userData
+func (this *Tox) CallbackFriendName(cbfn cb_friend_name_ftype, userData unsafe.Pointer) {
+	this.cb_friend_name = cbfn
+	this.cb_friend_name_user_data = userData
 
-	var _cbfn = (C.cb_name_change_ftype)(C.callbackNameChangeWrapperForC)
+	var _cbfn = (C.cb_friend_name_ftype)(C.callbackFriendNameWrapperForC)
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_name_change_wrapper_for_go(this.toxcore, _cbfn, _userData)
+	C.cb_friend_name_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackFriendStatusMessageWrapperForC
-func callbackFriendStatusMessageWrapperForC(m *C.Tox, a0 C.int32_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
+func callbackFriendStatusMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, a2 C.uint32_t, a3 unsafe.Pointer) {
 	var this = (*Tox)(cbUserDatas[m])
 	if this.cb_friend_status_message != nil {
 		statusText := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(a2))
@@ -325,26 +337,26 @@ func (this *Tox) CallbackFriendConnectionStatus(cbfn cb_friend_connection_status
 	C.cb_friend_connection_status_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-//export callbackTypingChangeWrapperForC
-func callbackTypingChangeWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
+//export callbackFriendTypingWrapperForC
+func callbackFriendTypingWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
 	var this = (*Tox)(a2)
-	if this.cb_typing_change != nil {
-		this.cb_typing_change(this, uint32(a0), uint8(a1), this.cb_typing_change_user_data)
+	if this.cb_friend_typing != nil {
+		this.cb_friend_typing(this, uint32(a0), uint8(a1), this.cb_friend_typing_user_data)
 	}
 }
 
-func (this *Tox) CallbackTypingChange(cbfn cb_typing_change_ftype, userData unsafe.Pointer) {
-	this.cb_typing_change = cbfn
-	this.cb_typing_change_user_data = userData
+func (this *Tox) CallbackFriendTyping(cbfn cb_friend_typing_ftype, userData unsafe.Pointer) {
+	this.cb_friend_typing = cbfn
+	this.cb_friend_typing_user_data = userData
 
-	var _cbfn = (C.cb_typing_change_ftype)(C.callbackTypingChangeWrapperForC)
+	var _cbfn = (C.cb_friend_typing_ftype)(C.callbackFriendTypingWrapperForC)
 	var _userData unsafe.Pointer = nil
 
-	C.cb_typing_change_wrapper_for_go(this.toxcore, _cbfn, _userData)
+	C.cb_friend_typing_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackReadReceiptWrapperForC
-func callbackReadReceiptWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
+func callbackReadReceiptWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
 	var this = cbUserDatas[m]
 	if this.cb_read_receipt != nil {
 		this.cb_read_receipt(this, uint32(a0), uint32(a1), this.cb_read_receipt_user_data)
@@ -362,7 +374,7 @@ func (this *Tox) CallbackReadReceipt(cbfn cb_read_receipt_ftype, userData unsafe
 }
 
 //export callbackSelfConnectionStatusWrapperForC
-func callbackSelfConnectionStatusWrapperForC(m *C.Tox, status C.int32_t, a2 unsafe.Pointer) {
+func callbackSelfConnectionStatusWrapperForC(m *C.Tox, status C.uint32_t, a2 unsafe.Pointer) {
 	var this = cbUserDatas[m]
 	if this.cb_self_connection_status != nil {
 		this.cb_self_connection_status(this, uint32(status), this.cb_self_connection_status_user_data)
@@ -906,22 +918,22 @@ func (this *Tox) SelfGetSecretKey() string {
 
 // tox_lossy_***
 
-func (this *Tox) SendLossyPacket(friendNumber uint32, data string, length uint32) (bool, error) {
+func (this *Tox) SendLossyPacket(friendNumber uint32, data string) (bool, error) {
 	var _fn = C.uint32_t(friendNumber)
 	var _data = C.CString(data)
 	defer C.free(unsafe.Pointer(_data))
-	var _length = C.size_t(length)
+	var _length = C.size_t(len(data))
 
 	var cerr C.TOX_ERR_FRIEND_CUSTOM_PACKET
 	r := C.tox_friend_send_lossy_packet(this.toxcore, _fn, char2uint8(_data), _length, &cerr)
 	return bool(r), nil
 }
 
-func (this *Tox) SendLossLessPacket(friendNumber uint32, data string, length uint32) (bool, error) {
+func (this *Tox) SendLossLessPacket(friendNumber uint32, data string) (bool, error) {
 	var _fn = C.uint32_t(friendNumber)
 	var _data = C.CString(data)
 	defer C.free(unsafe.Pointer(_data))
-	var _length = C.size_t(length)
+	var _length = C.size_t(len(data))
 
 	var cerr C.TOX_ERR_FRIEND_CUSTOM_PACKET
 	r := C.tox_friend_send_lossless_packet(this.toxcore, _fn, char2uint8(_data), _length, &cerr)
