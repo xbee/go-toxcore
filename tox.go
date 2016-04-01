@@ -120,7 +120,7 @@ static void cb_file_chunk_request_wrapper_for_go(Tox *m, cb_file_chunk_request_f
 { tox_callback_file_chunk_request(m, fn, userdata); }
 
 // fix nouse compile warning
-static inline void fixnouse() {
+static inline void fixnousetox() {
     cb_friend_request_wrapper_for_go(NULL, NULL, NULL);
     cb_friend_message_wrapper_for_go(NULL, NULL, NULL);
     cb_friend_name_wrapper_for_go(NULL, NULL, NULL);
