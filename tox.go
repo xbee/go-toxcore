@@ -13,7 +13,7 @@ import (
 /*
 // #cgo CFLAGS: -g -O2 -Wall
 #cgo CFLAGS: -g -O2
-#cgo LDFLAGS: -ltoxcore -ltoxdns -ltoxav -ltoxencryptsave
+#cgo LDFLAGS: -ltoxcore -ltoxdns -ltoxav -ltoxencryptsave -lvpx
 #include <stdlib.h>
 #include <string.h>
 #include <tox/tox.h>

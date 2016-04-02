@@ -6,7 +6,7 @@ package tox
 #include <stdint.h>
 
 static uint8_t *char2uint8(char *s) { return (uint8_t*)s; }
-
+static unsigned char *char2uchar(char *s) { return (unsigned char*)s; }
 */
 import "C"
 import "unsafe"
@@ -25,8 +25,16 @@ func pointer2uint8(b unsafe.Pointer) *C.uint8_t {
 	return C.char2uint8((*C.char)(b))
 }
 
+func pointer2uchar(b unsafe.Pointer) *C.uchar {
+	return C.char2uchar((*C.char)(b))
+}
+
 func bytes2uint8(ba []byte) *C.uint8_t {
 	return C.char2uint8((*C.char)((unsafe.Pointer)(&ba[0])))
+}
+
+func bytes2uchar(ba []byte) *C.uchar {
+	return C.char2uchar((*C.char)((unsafe.Pointer)(&ba[0])))
 }
 
 func toxerr(errno interface{}) error {
