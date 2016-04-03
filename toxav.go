@@ -146,11 +146,11 @@ func (this *ToxAV) CallbackCall(cbfn cb_call_ftype, userData unsafe.Pointer) {
 	C.cb_call_wrapper_for_go(this.toxav, _cbfn, _userData)
 }
 
-func (this *ToxAV) answer(friendNumber uint32, audioBitRate uint32, videoBitRate uint32) (bool, error) {
+func (this *ToxAV) Answer(friendNumber uint32, audioBitRate uint32, videoBitRate uint32) (bool, error) {
 	var cerr C.TOXAV_ERR_ANSWER
 	r := C.toxav_answer(this.toxav, C.uint32_t(friendNumber), C.uint32_t(audioBitRate), C.uint32_t(videoBitRate), &cerr)
 	if cerr != C.TOXAV_ERR_ANSWER_OK {
-
+		return false, toxerr(cerr)
 	}
 
 	return bool(r), nil
@@ -215,6 +215,7 @@ func (this *ToxAV) AudioSendFrame(friendNumber uint32, pcm []byte, sampleCount i
 	var cerr C.TOXAV_ERR_SEND_FRAME
 	r := C.toxav_audio_send_frame(this.toxav, C.uint32_t(friendNumber), pcm_, C.size_t(sampleCount), C.uint8_t(channels), C.uint32_t(samplingRate), &cerr)
 	if cerr != C.TOXAV_ERR_SEND_FRAME_OK {
+		return false, toxerr(cerr)
 	}
 	return bool(r), nil
 }
@@ -234,13 +235,13 @@ func (this *ToxAV) VideoSendFrame(friendNumber uint32, width uint16, height uint
 	C.rgb_to_i420(bytes2uchar(data), this.in_image)
 
 	var cerr C.TOXAV_ERR_SEND_FRAME
-
 	r := C.toxav_video_send_frame(this.toxav, C.uint32_t(friendNumber), C.uint16_t(width), C.uint16_t(height),
 		(*C.uint8_t)(this.in_image.planes[0]),
 		(*C.uint8_t)(this.in_image.planes[1]),
 		(*C.uint8_t)(this.in_image.planes[2]),
 		&cerr)
 	if cerr != C.TOXAV_ERR_SEND_FRAME_OK {
+		return false, toxerr(cerr)
 	}
 	return bool(r), nil
 }
@@ -250,8 +251,9 @@ func callbackAudioReceiveFrameWrapperForC(m *C.ToxAV, friendNumber C.uint32_t, p
 	var this = (*ToxAV)(cbAVUserDatas[m])
 	if this.cb_audio_receive_frame != nil {
 		length := sampleCount * C.size_t(channels) * 2
-		pcm_ := C.GoBytes(pcm, C.int(length))
-		this.cb_audio_receive_frame(this, uint32(friendNumber), pcm_, int(sampleCount), int(channels), int(samplingRate), this.cb_audio_receive_frame_user_data)
+		pcm_p := unsafe.Pointer(short2char(pcm))
+		pcm_b := C.GoBytes(pcm_p, C.int(length))
+		this.cb_audio_receive_frame(this, uint32(friendNumber), pcm_b, int(sampleCount), int(channels), int(samplingRate), this.cb_audio_receive_frame_user_data)
 	}
 }
 

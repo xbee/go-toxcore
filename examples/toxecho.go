@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"log"
 	// "os"
+	"math/rand"
 	"strconv"
 	"strings"
 	"time"
@@ -236,10 +237,75 @@ func main() {
 		}
 	}, nil)
 
-	// loops
+	// audio/video
+	av := tox.NewToxAV(t)
+	if av == nil {
+	}
+	av.CallbackCall(func(av *tox.ToxAV, friendNumber uint32, audioEnabled bool,
+		videoEnabled bool, userData unsafe.Pointer) {
+		if debug {
+			log.Println("oncall:", friendNumber, audioEnabled, videoEnabled)
+		}
+		var audioBitRate uint32 = 48
+		var videoBitRate uint32 = 64
+		r, err := av.Answer(friendNumber, audioBitRate, videoBitRate)
+		if err != nil {
+			log.Println(err, r)
+		}
+	}, nil)
+	av.CallbackCallState(func(av *tox.ToxAV, friendNumber uint32, state uint32, userData unsafe.Pointer) {
+		if debug {
+			log.Println("on call state:", friendNumber, state)
+		}
+	}, nil)
+	av.CallbackAudioReceiveFrame(func(av *tox.ToxAV, friendNumber uint32, pcm []byte,
+		sampleCount int, channels int, samplingRate int, userData unsafe.Pointer) {
+		if debug {
+			if rand.Int()%23 == 3 {
+				log.Println("on recv audio frame:", friendNumber, len(pcm), sampleCount, channels, samplingRate)
+			}
+		}
+		r, err := av.AudioSendFrame(friendNumber, pcm, sampleCount, channels, samplingRate)
+		if err != nil {
+			log.Println(err, r)
+		}
+	}, nil)
+
+	// toxav loops
+	go func() {
+		shutdown := false
+		loopc := 0
+		itval := uint32(0)
+		for !shutdown {
+			iv := av.IterationInterval()
+			if iv != itval {
+				log.Println("av itval changed:", itval, iv)
+				itval = iv
+			}
+
+			av.Iterate()
+			loopc += 1
+			time.Sleep(50 * time.Microsecond)
+		}
+
+		av.Kill()
+	}()
+
+	// toxcore loops
 	shutdown := false
 	loopc := 0
+	itval := uint32(0)
 	for !shutdown {
+		iv := t.IterationInterval()
+		if iv != itval {
+			if debug {
+				if itval-iv > 10 || iv-itval > 10 {
+					log.Println("tox itval changed:", itval, iv)
+				}
+			}
+			itval = iv
+		}
+
 		t.Iterate()
 		status := t.SelfGetConnectionStatus()
 		if loopc%5500 == 0 {
