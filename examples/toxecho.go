@@ -270,16 +270,31 @@ func main() {
 			log.Println(err, r)
 		}
 	}, nil)
+	av.CallbackVideoReceiveFrame(func(av *tox.ToxAV, friendNumber uint32, width uint16, height uint16,
+		frames []byte, userData unsafe.Pointer) {
+		if debug {
+			if rand.Int()%45 == 3 {
+				log.Println("on recv video frame:", friendNumber, width, height, len(frames))
+			}
+		}
+		r, err := av.VideoSendFrame(friendNumber, width, height, frames)
+		if err != nil {
+			log.Println(err, r)
+		}
+	}, nil)
 
 	// toxav loops
 	go func() {
 		shutdown := false
 		loopc := 0
-		itval := uint32(0)
+		itval := 0
 		for !shutdown {
 			iv := av.IterationInterval()
 			if iv != itval {
-				log.Println("av itval changed:", itval, iv)
+				// wtf
+				if iv-itval > 20 || itval-iv > 20 {
+					log.Println("av itval changed:", itval, iv, iv-itval, itval-iv)
+				}
 				itval = iv
 			}
 
@@ -294,12 +309,12 @@ func main() {
 	// toxcore loops
 	shutdown := false
 	loopc := 0
-	itval := uint32(0)
+	itval := 0
 	for !shutdown {
 		iv := t.IterationInterval()
 		if iv != itval {
 			if debug {
-				if itval-iv > 10 || iv-itval > 10 {
+				if itval-iv > 20 || iv-itval > 20 {
 					log.Println("tox itval changed:", itval, iv)
 				}
 			}

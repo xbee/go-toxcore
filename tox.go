@@ -581,9 +581,9 @@ func (this *Tox) Kill() {
 }
 
 // uint32_t tox_iteration_interval(Tox *tox);
-func (this *Tox) IterationInterval() uint32 {
+func (this *Tox) IterationInterval() int {
 	r := C.tox_iteration_interval(this.toxcore)
-	return uint32(r)
+	return int(r)
 }
 
 /* The main loop that needs to be run in intervals of tox_do_interval() ms. */

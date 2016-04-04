@@ -108,8 +108,8 @@ func (this *ToxAV) GetTox() *Tox {
 	return this.tox
 }
 
-func (this *ToxAV) IterationInterval() uint32 {
-	return uint32(C.toxav_iteration_interval(this.toxav))
+func (this *ToxAV) IterationInterval() int {
+	return int(C.toxav_iteration_interval(this.toxav))
 }
 
 func (this *ToxAV) Iterate() {
@@ -221,7 +221,7 @@ func (this *ToxAV) AudioSendFrame(friendNumber uint32, pcm []byte, sampleCount i
 }
 
 func (this *ToxAV) VideoSendFrame(friendNumber uint32, width uint16, height uint16, data []byte) (bool, error) {
-	if this.in_image == nil && (uint16(this.in_width) != width || uint16(this.in_height) != height) {
+	if this.in_image != nil && (uint16(this.in_width) != width || uint16(this.in_height) != height) {
 		C.vpx_img_free(this.in_image)
 		this.in_image = nil
 	}
@@ -277,12 +277,12 @@ func callbackVideoReceiveFrameWrapperForC(m *C.ToxAV, friendNumber C.uint32_t, w
 			this.out_image = nil
 		}
 
-		buf_size := width * height * 3
+		var buf_size int = int(width) * int(height) * 3
 
 		if this.out_image == nil {
 			this.out_width = width
 			this.out_hegith = height
-			this.out_image = make([]byte, buf_size)
+			this.out_image = make([]byte, buf_size, buf_size)
 		}
 
 		out := unsafe.Pointer(&(this.out_image[0]))
