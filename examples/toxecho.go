@@ -83,6 +83,20 @@ func main() {
 		log.Println("savedata write:", err)
 	}
 
+	// add friend norequest
+	fv := t.SelfGetFriendList()
+	for _, fno := range fv {
+		fid, err := t.FriendGetPublicKey(fno)
+		if err != nil {
+			log.Println(err)
+		} else {
+			t.FriendAddNorequest(fid)
+		}
+	}
+	if debug {
+		log.Println("add friends:", len(fv))
+	}
+
 	// callbacks
 	t.CallbackSelfConnectionStatus(func(t *tox.Tox, status uint32, userData unsafe.Pointer) {
 		if debug {
@@ -300,7 +314,7 @@ func main() {
 
 			av.Iterate()
 			loopc += 1
-			time.Sleep(50 * time.Microsecond)
+			time.Sleep(1000 * 50 * time.Microsecond)
 		}
 
 		av.Kill()
@@ -335,7 +349,7 @@ func main() {
 			}
 		}
 		loopc += 1
-		time.Sleep(50 * time.Microsecond)
+		time.Sleep(1000 * 50 * time.Microsecond)
 	}
 
 	t.Kill()

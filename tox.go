@@ -55,10 +55,20 @@ typedef void (*cb_friend_typing_ftype)(Tox *, uint32_t, uint8_t, void*);
 static void cb_friend_typing_wrapper_for_go(Tox *m, cb_friend_typing_ftype fn, void *userdata)
 { tox_callback_friend_typing(m, fn, userdata); }
 
-void callbackReadReceiptWrapperForC(Tox *, uint32_t, uint32_t, void*);
-typedef void (*cb_read_receipt_ftype)(Tox *, uint32_t, uint32_t, void*);
-static void cb_read_receipt_wrapper_for_go(Tox *m, cb_read_receipt_ftype fn, void *userdata)
+void callbackFriendReadReceiptWrapperForC(Tox *, uint32_t, uint32_t, void*);
+typedef void (*cb_friend_read_receipt_ftype)(Tox *, uint32_t, uint32_t, void*);
+static void cb_friend_read_receipt_wrapper_for_go(Tox *m, cb_friend_read_receipt_ftype fn, void *userdata)
 { tox_callback_friend_read_receipt(m, fn, userdata); }
+
+void callbackFriendLossyPacketWrapperForC(Tox *, uint32_t, uint8_t*, size_t, void*);
+typedef void (*cb_friend_lossy_packet_ftype)(Tox *, uint32_t, const uint8_t*, size_t, void*);
+static void cb_friend_lossy_packet_wrapper_for_go(Tox *m, cb_friend_lossy_packet_ftype fn, void *userdata)
+{ tox_callback_friend_lossy_packet(m, fn, userdata); }
+
+void callbackFriendLosslessPacketWrapperForC(Tox *, uint32_t, uint8_t*, size_t, void*);
+typedef void (*cb_friend_lossless_packet_ftype)(Tox *, uint32_t, const uint8_t*, size_t, void*);
+static void cb_friend_lossless_packet_wrapper_for_go(Tox *m, cb_friend_lossless_packet_ftype fn, void *userdata)
+{ tox_callback_friend_lossless_packet(m, fn, userdata); }
 
 void callbackSelfConnectionStatusWrapperForC(Tox *, uint32_t, void*);
 typedef void (*cb_self_connection_status_ftype)(Tox *, TOX_CONNECTION, void*);
@@ -128,7 +138,9 @@ static inline void fixnousetox() {
     cb_friend_status_wrapper_for_go(NULL, NULL, NULL);
     cb_friend_connection_status_wrapper_for_go(NULL, NULL, NULL);
     cb_friend_typing_wrapper_for_go(NULL, NULL, NULL);
-    cb_read_receipt_wrapper_for_go(NULL, NULL, NULL);
+    cb_friend_lossy_packet_wrapper_for_go(NULL, NULL, NULL);
+    cb_friend_lossless_packet_wrapper_for_go(NULL, NULL, NULL);
+    cb_friend_read_receipt_wrapper_for_go(NULL, NULL, NULL);
     cb_self_connection_status_wrapper_for_go(NULL, NULL, NULL);
     cb_group_invite_wrapper_for_go(NULL, NULL, NULL);
     cb_group_message_wrapper_for_go(NULL, NULL, NULL);
@@ -152,7 +164,11 @@ type cb_friend_status_message_ftype func(this *Tox, friendNumber uint32, newStat
 type cb_friend_status_ftype func(this *Tox, friendNumber uint32, status uint8, userData unsafe.Pointer)
 type cb_friend_connection_status_ftype func(this *Tox, friendNumber uint32, status uint32, userData unsafe.Pointer)
 type cb_friend_typing_ftype func(this *Tox, friendNumber uint32, isTyping uint8, userData unsafe.Pointer)
-type cb_read_receipt_ftype func(this *Tox, friendNumber uint32, receipt uint32, userData unsafe.Pointer)
+type cb_friend_read_receipt_ftype func(this *Tox, friendNumber uint32, receipt uint32, userData unsafe.Pointer)
+type cb_friend_lossy_packet_ftype func(this *Tox, friendNumber uint32, data string, userData unsafe.Pointer)
+type cb_friend_lossless_packet_ftype func(this *Tox, friendNumber uint32, data string, userData unsafe.Pointer)
+
+// self callback type
 type cb_self_connection_status_ftype func(this *Tox, status uint32, userData unsafe.Pointer)
 
 // group callback type
@@ -192,8 +208,12 @@ type Tox struct {
 	cb_friend_connection_status_user_data unsafe.Pointer
 	cb_friend_typing                      cb_friend_typing_ftype
 	cb_friend_typing_user_data            unsafe.Pointer
-	cb_read_receipt                       cb_read_receipt_ftype
-	cb_read_receipt_user_data             unsafe.Pointer
+	cb_friend_read_receipt                cb_friend_read_receipt_ftype
+	cb_friend_read_receipt_user_data      unsafe.Pointer
+	cb_friend_lossy_packet                cb_friend_lossy_packet_ftype
+	cb_friend_lossy_packet_user_data      unsafe.Pointer
+	cb_friend_lossless_packet             cb_friend_lossless_packet_ftype
+	cb_friend_lossless_packet_user_data   unsafe.Pointer
 	cb_self_connection_status             cb_self_connection_status_ftype
 	cb_self_connection_status_user_data   unsafe.Pointer
 
@@ -355,22 +375,60 @@ func (this *Tox) CallbackFriendTyping(cbfn cb_friend_typing_ftype, userData unsa
 	C.cb_friend_typing_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-//export callbackReadReceiptWrapperForC
-func callbackReadReceiptWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
+//export callbackFriendReadReceiptWrapperForC
+func callbackFriendReadReceiptWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
 	var this = cbUserDatas[m]
-	if this.cb_read_receipt != nil {
-		this.cb_read_receipt(this, uint32(a0), uint32(a1), this.cb_read_receipt_user_data)
+	if this.cb_friend_read_receipt != nil {
+		this.cb_friend_read_receipt(this, uint32(a0), uint32(a1), this.cb_friend_read_receipt_user_data)
 	}
 }
 
-func (this *Tox) CallbackReadReceipt(cbfn cb_read_receipt_ftype, userData unsafe.Pointer) {
-	this.cb_read_receipt = cbfn
-	this.cb_read_receipt_user_data = userData
+func (this *Tox) CallbackFriendReadReceipt(cbfn cb_friend_read_receipt_ftype, userData unsafe.Pointer) {
+	this.cb_friend_read_receipt = cbfn
+	this.cb_friend_read_receipt_user_data = userData
 
-	var _cbfn = (C.cb_read_receipt_ftype)(C.callbackReadReceiptWrapperForC)
+	var _cbfn = (C.cb_friend_read_receipt_ftype)(C.callbackFriendReadReceiptWrapperForC)
+	var _userData unsafe.Pointer
+
+	C.cb_friend_read_receipt_wrapper_for_go(this.toxcore, _cbfn, _userData)
+}
+
+//export callbackFriendLossyPacketWrapperForC
+func callbackFriendLossyPacketWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, len C.size_t, a2 unsafe.Pointer) {
+	var this = cbUserDatas[m]
+	if this.cb_friend_lossy_packet != nil {
+		msg := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(len))
+		this.cb_friend_lossy_packet(this, uint32(a0), msg, this.cb_friend_lossy_packet_user_data)
+	}
+}
+
+func (this *Tox) CallbackFriendLossyPacket(cbfn cb_friend_lossy_packet_ftype, userData unsafe.Pointer) {
+	this.cb_friend_lossy_packet = cbfn
+	this.cb_friend_lossy_packet_user_data = userData
+
+	var _cbfn = (C.cb_friend_lossy_packet_ftype)(C.callbackFriendLossyPacketWrapperForC)
+	var _userData unsafe.Pointer
+
+	C.cb_friend_lossy_packet_wrapper_for_go(this.toxcore, _cbfn, _userData)
+}
+
+//export callbackFriendLosslessPacketWrapperForC
+func callbackFriendLosslessPacketWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, len C.size_t, a2 unsafe.Pointer) {
+	var this = cbUserDatas[m]
+	if this.cb_friend_lossless_packet != nil {
+		msg := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(len))
+		this.cb_friend_lossless_packet(this, uint32(a0), msg, this.cb_friend_lossless_packet_user_data)
+	}
+}
+
+func (this *Tox) CallbackFriendLosslessPacket(cbfn cb_friend_lossless_packet_ftype, userData unsafe.Pointer) {
+	this.cb_friend_lossless_packet = cbfn
+	this.cb_friend_lossless_packet_user_data = userData
+
+	var _cbfn = (C.cb_friend_lossless_packet_ftype)(C.callbackFriendLosslessPacketWrapperForC)
 	var _userData = unsafe.Pointer(this)
 
-	C.cb_read_receipt_wrapper_for_go(this.toxcore, _cbfn, _userData)
+	C.cb_friend_lossless_packet_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
 //export callbackSelfConnectionStatusWrapperForC
@@ -568,7 +626,8 @@ func NewTox(opt *ToxOptions) *Tox {
 	var toxcore = C.tox_new(tox.toxopts, &cerr)
 	tox.toxcore = toxcore
 	if toxcore == nil {
-		log.Panic("error:", cerr)
+		log.Println(toxerr(cerr))
+		return nil
 	}
 	cbUserDatas[toxcore] = tox
 
@@ -586,7 +645,7 @@ func (this *Tox) IterationInterval() int {
 	return int(r)
 }
 
-/* The main loop that needs to be run in intervals of tox_do_interval() ms. */
+/* The main loop that needs to be run in intervals of tox_iteration_interval() ms. */
 // void tox_iterate(Tox *tox);
 func (this *Tox) Iterate() {
 	C.tox_iterate(this.toxcore)
@@ -673,6 +732,9 @@ func (this *Tox) FriendByPublicKey(pubkey string) (uint32, error) {
 
 	var cerr C.TOX_ERR_FRIEND_BY_PUBLIC_KEY
 	r := C.tox_friend_by_public_key(this.toxcore, pointer2uint8(pubkey_p), &cerr)
+	if cerr != C.TOX_ERR_FRIEND_BY_PUBLIC_KEY_OK {
+		return uint32(r), toxerr(cerr)
+	}
 	return uint32(r), nil
 }
 
@@ -724,6 +786,9 @@ func (this *Tox) FriendSendMessage(friendNumber uint32, message string) (int32, 
 	var mtype C.TOX_MESSAGE_TYPE = C.TOX_MESSAGE_TYPE_NORMAL
 	var cerr C.TOX_ERR_FRIEND_SEND_MESSAGE
 	r := C.tox_friend_send_message(this.toxcore, _fn, mtype, char2uint8(_message), _length, &cerr)
+	if cerr != C.TOX_ERR_FRIEND_SEND_MESSAGE_OK {
+		return int32(r), toxerr(cerr)
+	}
 	return int32(r), nil
 }
 
@@ -876,19 +941,30 @@ func (this *Tox) FriendGetTyping(friendNumber uint32) (bool, error) {
 	return bool(r), nil
 }
 
-func (this *Tox) CountFriendList() (uint32, error) {
+func (this *Tox) SelfGetFriendListSize() (uint32, error) {
 	r := C.tox_self_get_friend_list_size(this.toxcore)
 	return uint32(r), nil
 }
 
-// tox_callback_***
-
-func (this *Tox) GetNospam() (uint32, error) {
-	r := C.tox_self_get_nospam(this.toxcore)
-	return uint32(r), nil
+func (this *Tox) SelfGetFriendList() []uint32 {
+	sz := C.tox_self_get_friend_list_size(this.toxcore)
+	vec := make([]uint32, sz)
+	if sz == 0 {
+		return vec
+	}
+	vec_p := unsafe.Pointer(&vec[0])
+	C.tox_self_get_friend_list(this.toxcore, (*C.uint32_t)(vec_p))
+	return vec
 }
 
-func (this *Tox) SetNospam(nospam uint32) {
+// tox_callback_***
+
+func (this *Tox) SelfGetNospam() uint32 {
+	r := C.tox_self_get_nospam(this.toxcore)
+	return uint32(r)
+}
+
+func (this *Tox) SelfSetNospam(nospam uint32) {
 	var _nospam = C.uint32_t(nospam)
 
 	C.tox_self_set_nospam(this.toxcore, _nospam)
@@ -918,7 +994,7 @@ func (this *Tox) SelfGetSecretKey() string {
 
 // tox_lossy_***
 
-func (this *Tox) SendLossyPacket(friendNumber uint32, data string) (bool, error) {
+func (this *Tox) FriendSendLossyPacket(friendNumber uint32, data string) error {
 	var _fn = C.uint32_t(friendNumber)
 	var _data = C.CString(data)
 	defer C.free(unsafe.Pointer(_data))
@@ -926,10 +1002,13 @@ func (this *Tox) SendLossyPacket(friendNumber uint32, data string) (bool, error)
 
 	var cerr C.TOX_ERR_FRIEND_CUSTOM_PACKET
 	r := C.tox_friend_send_lossy_packet(this.toxcore, _fn, char2uint8(_data), _length, &cerr)
-	return bool(r), nil
+	if !r || cerr != C.TOX_ERR_FRIEND_CUSTOM_PACKET_OK {
+		return toxerr(cerr)
+	}
+	return nil
 }
 
-func (this *Tox) SendLossLessPacket(friendNumber uint32, data string) (bool, error) {
+func (this *Tox) FriendSendLossLessPacket(friendNumber uint32, data string) error {
 	var _fn = C.uint32_t(friendNumber)
 	var _data = C.CString(data)
 	defer C.free(unsafe.Pointer(_data))
@@ -937,7 +1016,10 @@ func (this *Tox) SendLossLessPacket(friendNumber uint32, data string) (bool, err
 
 	var cerr C.TOX_ERR_FRIEND_CUSTOM_PACKET
 	r := C.tox_friend_send_lossless_packet(this.toxcore, _fn, char2uint8(_data), _length, &cerr)
-	return bool(r), nil
+	if !r || cerr != C.TOX_ERR_FRIEND_CUSTOM_PACKET_OK {
+		return toxerr(cerr)
+	}
+	return nil
 }
 
 // tox_callback_group_***
