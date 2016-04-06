@@ -9,7 +9,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unsafe"
 
 	"tox"
 )
@@ -98,12 +97,12 @@ func main() {
 	}
 
 	// callbacks
-	t.CallbackSelfConnectionStatus(func(t *tox.Tox, status uint32, userData unsafe.Pointer) {
+	t.CallbackSelfConnectionStatus(func(t *tox.Tox, status uint32, userData interface{}) {
 		if debug {
 			log.Println("on self conn status:", status, userData)
 		}
 	}, nil)
-	t.CallbackFriendRequest(func(t *tox.Tox, friendId string, message string, userData unsafe.Pointer) {
+	t.CallbackFriendRequest(func(t *tox.Tox, friendId string, message string, userData interface{}) {
 		log.Println(friendId, message)
 		num, err := t.FriendAddNorequest(friendId)
 		if debug {
@@ -113,7 +112,7 @@ func main() {
 			t.WriteSavedata(fname)
 		}
 	}, nil)
-	t.CallbackFriendMessage(func(t *tox.Tox, friendNumber uint32, message string, userData unsafe.Pointer) {
+	t.CallbackFriendMessage(func(t *tox.Tox, friendNumber uint32, message string, userData interface{}) {
 		if debug {
 			log.Println("on friend message:", friendNumber, message)
 		}
@@ -122,19 +121,19 @@ func main() {
 			log.Println(n, err)
 		}
 	}, nil)
-	t.CallbackFriendConnectionStatus(func(t *tox.Tox, friendNumber uint32, status uint32, userData unsafe.Pointer) {
+	t.CallbackFriendConnectionStatus(func(t *tox.Tox, friendNumber uint32, status uint32, userData interface{}) {
 		if debug {
 			friendId, err := t.FriendGetPublicKey(friendNumber)
 			log.Println("on friend connection status:", friendNumber, status, friendId, err)
 		}
 	}, nil)
-	t.CallbackFriendStatus(func(t *tox.Tox, friendNumber uint32, status uint8, userData unsafe.Pointer) {
+	t.CallbackFriendStatus(func(t *tox.Tox, friendNumber uint32, status uint8, userData interface{}) {
 		if debug {
 			friendId, err := t.FriendGetPublicKey(friendNumber)
 			log.Println("on friend status:", friendNumber, status, friendId, err)
 		}
 	}, nil)
-	t.CallbackFriendStatusMessage(func(t *tox.Tox, friendNumber uint32, statusText string, userData unsafe.Pointer) {
+	t.CallbackFriendStatusMessage(func(t *tox.Tox, friendNumber uint32, statusText string, userData interface{}) {
 		if debug {
 			friendId, err := t.FriendGetPublicKey(friendNumber)
 			log.Println("on friend status text:", friendNumber, statusText, friendId, err)
@@ -179,7 +178,7 @@ func main() {
 	}
 
 	t.CallbackFileRecvControl(func(t *tox.Tox, friendNumber uint32, fileNumber uint32,
-		control int, userData unsafe.Pointer) {
+		control int, userData interface{}) {
 		if debug {
 			friendId, err := t.FriendGetPublicKey(friendNumber)
 			log.Println("on recv file control:", friendNumber, fileNumber, control, friendId, err)
@@ -200,7 +199,7 @@ func main() {
 		}
 	}, nil)
 	t.CallbackFileRecv(func(t *tox.Tox, friendNumber uint32, fileNumber uint32, kind uint32,
-		fileSize uint64, fileName string, userData unsafe.Pointer) {
+		fileSize uint64, fileName string, userData interface{}) {
 		if debug {
 			friendId, err := t.FriendGetPublicKey(friendNumber)
 			log.Println("on recv file:", friendNumber, fileNumber, kind, fileSize, fileName, friendId, err)
@@ -217,7 +216,7 @@ func main() {
 		sendFiles[uint64(uint64(friendNumber)<<32|uint64(reFileNumber))] = fileNumber
 	}, nil)
 	t.CallbackFileRecvChunk(func(t *tox.Tox, friendNumber uint32, fileNumber uint32,
-		position uint64, data []byte, userData unsafe.Pointer) {
+		position uint64, data []byte, userData interface{}) {
 		friendId, err := t.FriendGetPublicKey(friendNumber)
 		if debug {
 			// log.Println("on recv chunk:", friendNumber, fileNumber, position, len(data), friendId, err)
@@ -235,7 +234,7 @@ func main() {
 		}
 	}, nil)
 	t.CallbackFileChunkRequest(func(t *tox.Tox, friendNumber uint32, fileNumber uint32, position uint64,
-		length int, userData unsafe.Pointer) {
+		length int, userData interface{}) {
 		friendId, err := t.FriendGetPublicKey(friendNumber)
 		if length == 0 {
 			if debug {
@@ -256,7 +255,7 @@ func main() {
 	if av == nil {
 	}
 	av.CallbackCall(func(av *tox.ToxAV, friendNumber uint32, audioEnabled bool,
-		videoEnabled bool, userData unsafe.Pointer) {
+		videoEnabled bool, userData interface{}) {
 		if debug {
 			log.Println("oncall:", friendNumber, audioEnabled, videoEnabled)
 		}
@@ -267,13 +266,13 @@ func main() {
 			log.Println(err, r)
 		}
 	}, nil)
-	av.CallbackCallState(func(av *tox.ToxAV, friendNumber uint32, state uint32, userData unsafe.Pointer) {
+	av.CallbackCallState(func(av *tox.ToxAV, friendNumber uint32, state uint32, userData interface{}) {
 		if debug {
 			log.Println("on call state:", friendNumber, state)
 		}
 	}, nil)
 	av.CallbackAudioReceiveFrame(func(av *tox.ToxAV, friendNumber uint32, pcm []byte,
-		sampleCount int, channels int, samplingRate int, userData unsafe.Pointer) {
+		sampleCount int, channels int, samplingRate int, userData interface{}) {
 		if debug {
 			if rand.Int()%23 == 3 {
 				log.Println("on recv audio frame:", friendNumber, len(pcm), sampleCount, channels, samplingRate)
@@ -285,7 +284,7 @@ func main() {
 		}
 	}, nil)
 	av.CallbackVideoReceiveFrame(func(av *tox.ToxAV, friendNumber uint32, width uint16, height uint16,
-		frames []byte, userData unsafe.Pointer) {
+		frames []byte, userData interface{}) {
 		if debug {
 			if rand.Int()%45 == 3 {
 				log.Println("on recv video frame:", friendNumber, width, height, len(frames))

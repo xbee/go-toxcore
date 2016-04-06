@@ -56,11 +56,11 @@ static inline void fixnousetoxav() {
 import "C"
 import "unsafe"
 
-type cb_call_ftype func(this *ToxAV, friendNumber uint32, audioEnabled bool, videoEnabled bool, userData unsafe.Pointer)
-type cb_call_state_ftype func(this *ToxAV, friendNumber uint32, state uint32, userData unsafe.Pointer)
-type cb_bit_rate_status_ftype func(this *ToxAV, friendNumber uint32, audioBitRate uint32, videoBitRate uint32, userData unsafe.Pointer)
-type cb_audio_receive_frame_ftype func(this *ToxAV, friendNumber uint32, pcm []byte, sampleCount int, channels int, samplingRate int, userData unsafe.Pointer)
-type cb_video_receive_frame_ftype func(this *ToxAV, friendNumber uint32, width uint16, height uint16, data []byte, userData unsafe.Pointer)
+type cb_call_ftype func(this *ToxAV, friendNumber uint32, audioEnabled bool, videoEnabled bool, userData interface{})
+type cb_call_state_ftype func(this *ToxAV, friendNumber uint32, state uint32, userData interface{})
+type cb_bit_rate_status_ftype func(this *ToxAV, friendNumber uint32, audioBitRate uint32, videoBitRate uint32, userData interface{})
+type cb_audio_receive_frame_ftype func(this *ToxAV, friendNumber uint32, pcm []byte, sampleCount int, channels int, samplingRate int, userData interface{})
+type cb_video_receive_frame_ftype func(this *ToxAV, friendNumber uint32, width uint16, height uint16, data []byte, userData interface{})
 
 type ToxAV struct {
 	tox   *Tox
@@ -76,15 +76,15 @@ type ToxAV struct {
 
 	// callbacks
 	cb_call                          cb_call_ftype
-	cb_call_user_data                unsafe.Pointer
+	cb_call_user_data                interface{}
 	cb_call_state                    cb_call_state_ftype
-	cb_call_state_user_data          unsafe.Pointer
+	cb_call_state_user_data          interface{}
 	cb_bit_rate_status               cb_bit_rate_status_ftype
-	cb_bit_rate_status_user_data     unsafe.Pointer
+	cb_bit_rate_status_user_data     interface{}
 	cb_audio_receive_frame           cb_audio_receive_frame_ftype
-	cb_audio_receive_frame_user_data unsafe.Pointer
+	cb_audio_receive_frame_user_data interface{}
 	cb_video_receive_frame           cb_video_receive_frame_ftype
-	cb_video_receive_frame_user_data unsafe.Pointer
+	cb_video_receive_frame_user_data interface{}
 }
 
 func NewToxAV(tox *Tox) *ToxAV {
@@ -135,7 +135,7 @@ func callbackCallWrapperForC(m *C.ToxAV, friendNumber C.uint32_t, audioEnabled C
 	}
 }
 
-func (this *ToxAV) CallbackCall(cbfn cb_call_ftype, userData unsafe.Pointer) {
+func (this *ToxAV) CallbackCall(cbfn cb_call_ftype, userData interface{}) {
 	this.cb_call = cbfn
 	this.cb_call_user_data = userData
 
@@ -164,7 +164,7 @@ func callbackCallStateWrapperForC(m *C.ToxAV, friendNumber C.uint32_t, state C.u
 	}
 }
 
-func (this *ToxAV) CallbackCallState(cbfn cb_call_state_ftype, userData unsafe.Pointer) {
+func (this *ToxAV) CallbackCallState(cbfn cb_call_state_ftype, userData interface{}) {
 	this.cb_call_state = cbfn
 	this.cb_call_state_user_data = userData
 
@@ -199,7 +199,7 @@ func callbackBitRateStatusWrapperForC(m *C.ToxAV, friendNumber C.uint32_t, audio
 	}
 }
 
-func (this *ToxAV) CallbackBitRateStatus(cbfn cb_bit_rate_status_ftype, userData unsafe.Pointer) {
+func (this *ToxAV) CallbackBitRateStatus(cbfn cb_bit_rate_status_ftype, userData interface{}) {
 	this.cb_bit_rate_status = cbfn
 	this.cb_bit_rate_status_user_data = userData
 
@@ -257,7 +257,7 @@ func callbackAudioReceiveFrameWrapperForC(m *C.ToxAV, friendNumber C.uint32_t, p
 	}
 }
 
-func (this *ToxAV) CallbackAudioReceiveFrame(cbfn cb_audio_receive_frame_ftype, userData unsafe.Pointer) {
+func (this *ToxAV) CallbackAudioReceiveFrame(cbfn cb_audio_receive_frame_ftype, userData interface{}) {
 	this.cb_audio_receive_frame = cbfn
 	this.cb_audio_receive_frame_user_data = userData
 
@@ -293,7 +293,7 @@ func callbackVideoReceiveFrameWrapperForC(m *C.ToxAV, friendNumber C.uint32_t, w
 	}
 }
 
-func (this *ToxAV) CallbackVideoReceiveFrame(cbfn cb_video_receive_frame_ftype, userData unsafe.Pointer) {
+func (this *ToxAV) CallbackVideoReceiveFrame(cbfn cb_video_receive_frame_ftype, userData interface{}) {
 	this.cb_video_receive_frame = cbfn
 	this.cb_video_receive_frame_user_data = userData
 
