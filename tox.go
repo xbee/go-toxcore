@@ -13,7 +13,7 @@ import (
 /*
 // #cgo CFLAGS: -g -O2 -Wall
 #cgo CFLAGS: -g -O2
-#cgo LDFLAGS: -ltoxcore -ltoxdns -ltoxav -ltoxencryptsave -lvpx
+#cgo LDFLAGS: -ltoxcore -ltoxdns -ltoxav -ltoxencryptsave -lvpx -lopus -lsodium -lm
 #include <stdlib.h>
 #include <string.h>
 #include <tox/tox.h>
@@ -426,7 +426,7 @@ func (this *Tox) CallbackFriendLosslessPacket(cbfn cb_friend_lossless_packet_fty
 	this.cb_friend_lossless_packet_user_data = userData
 
 	var _cbfn = (C.cb_friend_lossless_packet_ftype)(C.callbackFriendLosslessPacketWrapperForC)
-	var _userData = unsafe.Pointer(this)
+	var _userData unsafe.Pointer
 
 	C.cb_friend_lossless_packet_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
@@ -616,9 +616,10 @@ func (this *Tox) CallbackFileChunkRequest(cbfn cb_file_chunk_request_ftype, user
 
 func NewTox(opt *ToxOptions) *Tox {
 	var tox = new(Tox)
-	tox.opts = NewToxOptions()
 	if opt != nil {
 		tox.opts = opt
+	} else {
+		tox.opts = NewToxOptions()
 	}
 	tox.toxopts = tox.opts.toCToxOptions()
 
@@ -777,7 +778,7 @@ func (this *Tox) FriendExists(friendNumber uint32) (bool, error) {
 	return bool(r), nil
 }
 
-func (this *Tox) FriendSendMessage(friendNumber uint32, message string) (int32, error) {
+func (this *Tox) FriendSendMessage(friendNumber uint32, message string) (uint32, error) {
 	var _fn = C.uint32_t(friendNumber)
 	var _message = C.CString(message)
 	defer C.free(unsafe.Pointer(_message))
@@ -787,9 +788,9 @@ func (this *Tox) FriendSendMessage(friendNumber uint32, message string) (int32, 
 	var cerr C.TOX_ERR_FRIEND_SEND_MESSAGE
 	r := C.tox_friend_send_message(this.toxcore, _fn, mtype, char2uint8(_message), _length, &cerr)
 	if cerr != C.TOX_ERR_FRIEND_SEND_MESSAGE_OK {
-		return int32(r), toxerr(cerr)
+		return uint32(r), toxerr(cerr)
 	}
-	return int32(r), nil
+	return uint32(r), nil
 }
 
 func (this *Tox) FriendSendAction(friendNumber uint32, action string) (int32, error) {
@@ -1008,7 +1009,7 @@ func (this *Tox) FriendSendLossyPacket(friendNumber uint32, data string) error {
 	return nil
 }
 
-func (this *Tox) FriendSendLossLessPacket(friendNumber uint32, data string) error {
+func (this *Tox) FriendSendLosslessPacket(friendNumber uint32, data string) error {
 	var _fn = C.uint32_t(friendNumber)
 	var _data = C.CString(data)
 	defer C.free(unsafe.Pointer(_data))
