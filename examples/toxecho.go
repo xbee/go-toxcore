@@ -37,7 +37,15 @@ func main() {
 		}
 	}
 	opt.Tcp_port = 33445
-	t := tox.NewTox(opt)
+	var t *tox.Tox
+	for i := 0; i < 5; i++ {
+		t = tox.NewTox(opt)
+		if t == nil {
+			opt.Tcp_port += 1
+		} else {
+			break
+		}
+	}
 
 	r, err := t.Bootstrap(server[0].(string), server[1].(uint16), server[2].(string))
 	r2, err := t.AddTcpRelay(server[0].(string), server[1].(uint16), server[2].(string))
