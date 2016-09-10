@@ -152,6 +152,7 @@ static inline void fixnousetox() {
     cb_file_recv_chunk_wrapper_for_go(NULL, NULL, NULL);
     cb_file_chunk_request_wrapper_for_go(NULL, NULL, NULL);
 }
+
 */
 import "C"
 
@@ -238,11 +239,11 @@ type Tox struct {
 	cb_file_chunk_request_user_data interface{}
 }
 
-var cbUserDatas map[*C.Tox]*Tox = make(map[*C.Tox]*Tox, 0)
+var cbUserDatas = NewUserData()
 
 //export callbackFriendRequestWrapperForC
 func callbackFriendRequestWrapperForC(m *C.Tox, a0 *C.uint8_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_friend_request != nil {
 		pubkey_b := C.GoBytes(unsafe.Pointer(a0), 32)
 		pubkey := hex.EncodeToString(pubkey_b)
@@ -267,7 +268,7 @@ func (this *Tox) CallbackFriendRequest(cbfn cb_friend_request_ftype, userData in
 //export callbackFriendMessageWrapperForC
 func callbackFriendMessageWrapperForC(m *C.Tox, a0 C.uint32_t, mtype C.int,
 	a1 *C.uint8_t, a2 C.uint32_t, a3 unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_friend_message != nil {
 		message_ := C.GoStringN((*C.char)(unsafe.Pointer(a1)), (C.int)(a2))
 		this.cb_friend_message(this, uint32(a0), message_, this.cb_friend_message_user_data)
@@ -286,7 +287,7 @@ func (this *Tox) CallbackFriendMessage(cbfn cb_friend_message_ftype, userData in
 
 //export callbackFriendNameWrapperForC
 func callbackFriendNameWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, a2 C.uint32_t, a3 unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_friend_name != nil {
 		this.cb_friend_name(this, uint32(a0), (*uint8)(a1), uint16(a2), this.cb_friend_name_user_data)
 	}
@@ -304,7 +305,7 @@ func (this *Tox) CallbackFriendName(cbfn cb_friend_name_ftype, userData interfac
 
 //export callbackFriendStatusMessageWrapperForC
 func callbackFriendStatusMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, a2 C.uint32_t, a3 unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_friend_status_message != nil {
 		statusText := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(a2))
 		this.cb_friend_status_message(this, uint32(a0), statusText, this.cb_friend_status_message_user_data)
@@ -323,7 +324,7 @@ func (this *Tox) CallbackFriendStatusMessage(cbfn cb_friend_status_message_ftype
 
 //export callbackFriendStatusWrapperForC
 func callbackFriendStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_friend_status != nil {
 		this.cb_friend_status(this, uint32(a0), uint8(a1), this.cb_friend_status_user_data)
 	}
@@ -341,7 +342,7 @@ func (this *Tox) CallbackFriendStatus(cbfn cb_friend_status_ftype, userData inte
 
 //export callbackFriendConnectionStatusWrapperForC
 func callbackFriendConnectionStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_friend_connection_status != nil {
 		this.cb_friend_connection_status(this, uint32(a0), uint32(a1), this.cb_friend_connection_status_user_data)
 	}
@@ -377,7 +378,7 @@ func (this *Tox) CallbackFriendTyping(cbfn cb_friend_typing_ftype, userData inte
 
 //export callbackFriendReadReceiptWrapperForC
 func callbackFriendReadReceiptWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
-	var this = cbUserDatas[m]
+	var this = cbUserDatas.Get(m)
 	if this.cb_friend_read_receipt != nil {
 		this.cb_friend_read_receipt(this, uint32(a0), uint32(a1), this.cb_friend_read_receipt_user_data)
 	}
@@ -395,7 +396,7 @@ func (this *Tox) CallbackFriendReadReceipt(cbfn cb_friend_read_receipt_ftype, us
 
 //export callbackFriendLossyPacketWrapperForC
 func callbackFriendLossyPacketWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, len C.size_t, a2 unsafe.Pointer) {
-	var this = cbUserDatas[m]
+	var this = cbUserDatas.Get(m)
 	if this.cb_friend_lossy_packet != nil {
 		msg := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(len))
 		this.cb_friend_lossy_packet(this, uint32(a0), msg, this.cb_friend_lossy_packet_user_data)
@@ -414,7 +415,7 @@ func (this *Tox) CallbackFriendLossyPacket(cbfn cb_friend_lossy_packet_ftype, us
 
 //export callbackFriendLosslessPacketWrapperForC
 func callbackFriendLosslessPacketWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, len C.size_t, a2 unsafe.Pointer) {
-	var this = cbUserDatas[m]
+	var this = cbUserDatas.Get(m)
 	if this.cb_friend_lossless_packet != nil {
 		msg := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(len))
 		this.cb_friend_lossless_packet(this, uint32(a0), msg, this.cb_friend_lossless_packet_user_data)
@@ -433,7 +434,7 @@ func (this *Tox) CallbackFriendLosslessPacket(cbfn cb_friend_lossless_packet_fty
 
 //export callbackSelfConnectionStatusWrapperForC
 func callbackSelfConnectionStatusWrapperForC(m *C.Tox, status C.uint32_t, a2 unsafe.Pointer) {
-	var this = cbUserDatas[m]
+	var this = cbUserDatas.Get(m)
 	if this.cb_self_connection_status != nil {
 		this.cb_self_connection_status(this, uint32(status), this.cb_self_connection_status_user_data)
 	}
@@ -539,7 +540,7 @@ func (this *Tox) CallbackGroupNameListChange(cbfn cb_group_namelist_change_ftype
 //export callbackFileRecvControlWrapperForC
 func callbackFileRecvControlWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
 	control C.TOX_FILE_CONTROL, userData unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_file_recv_control != nil {
 		this.cb_file_recv_control(this, uint32(friendNumber), uint32(fileNumber),
 			int(control), this.cb_file_recv_control_user_data)
@@ -558,7 +559,7 @@ func (this *Tox) CallbackFileRecvControl(cbfn cb_file_recv_control_ftype, userDa
 //export callbackFileRecvWrapperForC
 func callbackFileRecvWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t, kind C.uint32_t,
 	fileSize C.uint64_t, fileName *C.uint8_t, fileNameLength C.size_t, userData unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_file_recv != nil {
 		fileName_ := C.GoStringN((*C.char)(unsafe.Pointer(fileName)), C.int(fileNameLength))
 		this.cb_file_recv(this, uint32(friendNumber), uint32(fileNumber), uint32(kind),
@@ -578,7 +579,7 @@ func (this *Tox) CallbackFileRecv(cbfn cb_file_recv_ftype, userData interface{})
 //export callbackFileRecvChunkWrapperForC
 func callbackFileRecvChunkWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
 	position C.uint64_t, data *C.uint8_t, length C.size_t, userData unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_file_recv != nil {
 		data_ := C.GoBytes((unsafe.Pointer)(data), C.int(length))
 		this.cb_file_recv_chunk(this, uint32(friendNumber), uint32(fileNumber), uint64(position),
@@ -598,7 +599,7 @@ func (this *Tox) CallbackFileRecvChunk(cbfn cb_file_recv_chunk_ftype, userData i
 //export callbackFileChunkRequestWrapperForC
 func callbackFileChunkRequestWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
 	position C.uint64_t, length C.size_t, userData unsafe.Pointer) {
-	var this = (*Tox)(cbUserDatas[m])
+	var this = cbUserDatas.Get(m)
 	if this.cb_file_recv != nil {
 		this.cb_file_chunk_request(this, uint32(friendNumber), uint32(fileNumber), uint64(position),
 			int(length), this.cb_file_chunk_request_user_data)
@@ -630,7 +631,7 @@ func NewTox(opt *ToxOptions) *Tox {
 		log.Println(toxerr(cerr))
 		return nil
 	}
-	cbUserDatas[toxcore] = tox
+	cbUserDatas.Set(toxcore, tox)
 
 	return tox
 }

@@ -52,6 +52,7 @@ install:
 
 script:
   - pwd
+  - go get github.com/streamrail/concurrent-map
   - go install -v -x github.com/kitech/go-toxcore
   - ln -sv $PWD ../../../tox
   - ls ../../../tox
