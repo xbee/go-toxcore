@@ -92,3 +92,7 @@ func (this *Tox) WriteSavedata(fname string) error {
 func (this *Tox) LoadSavedata(fname string) ([]byte, error) {
 	return ioutil.ReadFile(fname)
 }
+
+func LoadSavedata(fname string) ([]byte, error) {
+	return ioutil.ReadFile(fname)
+}
