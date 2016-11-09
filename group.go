@@ -6,22 +6,22 @@ package tox
 #include <tox/tox.h>
 
 void callbackGroupInviteWrapperForC(Tox*, int32_t, uint8_t, uint8_t *, uint16_t, void *);
-typedef void (*cb_group_invite_ftype)(Tox *, int32_t, uint8_t, uint8_t *, uint16_t, void *);
+typedef void (*cb_group_invite_ftype)(Tox *, int32_t, uint8_t, const uint8_t *, uint16_t, void *);
 static void cb_group_invite_wrapper_for_go(Tox *m, cb_group_invite_ftype fn, void *userdata)
 { tox_callback_group_invite(m, fn, userdata); }
 
-void callbackGroupMessageWrapperForC(Tox *, int, int , uint8_t *, uint16_t, void *);
-typedef void (*cb_group_message_ftype)(Tox *, int, int , uint8_t *, uint16_t, void *);
+void callbackGroupMessageWrapperForC(Tox *, int, int, uint8_t *, uint16_t, void *);
+typedef void (*cb_group_message_ftype)(Tox *, int, int, const uint8_t *, uint16_t, void *);
 static void cb_group_message_wrapper_for_go(Tox *m, cb_group_message_ftype fn, void *userdata)
 { tox_callback_group_message(m, fn, userdata); }
 
 void callbackGroupActionWrapperForC(Tox*, int, int, uint8_t*, uint16_t, void*);
-typedef void (*cb_group_action_ftype)(Tox*, int, int, uint8_t*, uint16_t, void*);
+typedef void (*cb_group_action_ftype)(Tox*, int, int, const uint8_t*, uint16_t, void*);
 static void cb_group_action_wrapper_for_go(Tox *m, cb_group_action_ftype fn, void *userdata)
 { tox_callback_group_action(m, fn, userdata); }
 
 void callbackGroupTitleWrapperForC(Tox*, int, int, uint8_t*, uint8_t, void*);
-typedef void (*cb_group_title_ftype)(Tox*, int, int, uint8_t*, uint8_t, void*);
+typedef void (*cb_group_title_ftype)(Tox*, int, int, const uint8_t*, uint8_t, void*);
 static void cb_group_title_wrapper_for_go(Tox *m, cb_group_title_ftype fn, void *userdata)
 { tox_callback_group_title(m, fn, userdata); }
 
@@ -30,6 +30,56 @@ typedef void (*cb_group_namelist_change_ftype)(Tox*, int, int, uint8_t, void*);
 static void cb_group_namelist_change_wrapper_for_go(Tox *m, cb_group_namelist_change_ftype fn, void *userdata)
 { tox_callback_group_namelist_change(m, fn, userdata); }
 
+
+// fix 2dim array
+typedef struct _StringArray {
+    int length;
+    uint8_t **data;
+    uint16_t *lengths;
+} StringArray;
+static StringArray* StringArrayNew(int len)
+{
+    StringArray *arr = calloc(1, sizeof(StringArray));
+    arr->length = len;
+    arr->lengths = calloc(1, len * sizeof(uint16_t));
+    arr->data = calloc(1, len * sizeof(char*));
+    for (int i = 0; i < len; i++) {
+        arr->data[i] = calloc(1, TOX_MAX_NAME_LENGTH);
+    }
+    return arr;
+}
+static void StringArrayFree(StringArray *arr)
+{
+    for (int i = 0; i < arr->length; i++) {
+        free(arr->data[i]);
+    }
+    free(arr->data);
+    free(arr->lengths);
+    free(arr);
+}
+
+static uint8_t *StringArrayAt(StringArray *arr, int idx)
+{ return arr->data[idx]; }
+static uint16_t StringArrayLenAt(StringArray *arr, int idx)
+{ return arr->lengths[idx];}
+static uint8_t *StringArrayGet(StringArray *arr, int idx, uint16_t *len)
+{
+    *len = arr->lengths[idx];
+    return arr->data[idx];
+}
+
+static StringArray* tox_group_get_names_wrapper(Tox *t, int groupNumber)
+{
+    int sz = tox_group_number_peers(t, groupNumber);
+    StringArray *arr = StringArrayNew(sz);
+    int ret = tox_group_get_names(t, groupNumber, (uint8_t(*)[128])(arr->data), arr->lengths, sz);
+    if (ret == -1) {
+        StringArrayFree(arr);
+        return NULL;
+    }
+    return arr;
+}
+
 // fix nouse compile warning
 static inline void fixnousetoxgroup() {
     cb_group_invite_wrapper_for_go(NULL, NULL, NULL);
@@ -37,6 +87,13 @@ static inline void fixnousetoxgroup() {
     cb_group_action_wrapper_for_go(NULL, NULL, NULL);
     cb_group_title_wrapper_for_go(NULL, NULL, NULL);
     cb_group_namelist_change_wrapper_for_go(NULL, NULL, NULL);
+
+    StringArray *arr = NULL;
+    StringArrayFree(arr);
+    StringArrayAt(arr, 0);
+    StringArrayLenAt(arr, 0);
+    StringArrayGet(arr, 0, NULL);
+    tox_group_get_names_wrapper(0, 0);
 }
 
 */
@@ -229,27 +286,45 @@ func (this *Tox) GroupPeerNumberIsOurs(groupNumber int, peerNumber int) (uint, e
 	return uint(r), nil
 }
 
-func (this *Tox) GroupNumberPeers(groupNumber int) (int, error) {
+func (this *Tox) GroupNumberPeers(groupNumber int) int {
 	var _gn = C.int(groupNumber)
 
 	r := C.tox_group_number_peers(this.toxcore, _gn)
-	return int(r), nil
+	return int(r)
 }
 
-/*
-int tox_group_get_names(const Tox *tox, int groupnumber, uint8_t names[][TOX_MAX_NAME_LENGTH],
-	uint16_t lengths[],
-	uint16_t length);
-*/
+func (this *Tox) GroupGetNames(groupNumber int) []string {
+	arr := C.tox_group_get_names_wrapper(this.toxcore, C.int(groupNumber))
+	if arr == nil {
+		return make([]string, 0)
+	}
 
-func (this *Tox) CountChatList() (uint32, error) {
+	var len C.uint16_t
+	vec := make([]string, int(arr.length))
+	for idx := 0; idx < int(arr.length); idx++ {
+		// len := C.StringArrayLenAt(arr, C.int(i))
+		// data := C.StringArrayAt(arr, C.int(i))
+		data := C.StringArrayGet(arr, C.int(idx), &len)
+		vec[idx] = string(C.GoBytes(unsafe.Pointer(data), C.int(len)))
+	}
+	C.StringArrayFree(arr)
+	return vec
+}
+
+func (this *Tox) CountChatList() uint32 {
 	r := C.tox_count_chatlist(this.toxcore)
-	return uint32(r), nil
+	return uint32(r)
 }
 
-// TODO...
-func (this *Tox) GetChatList(outList []int32, listSize uint32) (uint32, error) {
-	return uint32(0), nil
+func (this *Tox) GetChatList() []int32 {
+	var sz uint32 = this.CountChatList()
+	vec := make([]int32, sz)
+	vec_p := unsafe.Pointer(&vec[0])
+	osz := C.tox_get_chatlist(this.toxcore, (*C.int32_t)(vec_p), C.uint32_t(sz))
+	if osz == 0 {
+		return vec[0:0]
+	}
+	return vec
 }
 
 func (this *Tox) GroupGetType(groupNumber int) (int, error) {
