@@ -1,15 +1,5 @@
 package tox
 
-import (
-	"encoding/hex"
-	"fmt"
-	"log"
-	"strings"
-	// "reflect"
-	// "runtime"
-	"unsafe"
-)
-
 /*
 #include <stdlib.h>
 #include <string.h>
@@ -121,6 +111,16 @@ static inline void fixnousetox() {
 
 */
 import "C"
+
+import (
+	"encoding/hex"
+	"fmt"
+	"log"
+	"strings"
+	// "reflect"
+	// "runtime"
+	"unsafe"
+)
 
 //////////
 // friend callback type
