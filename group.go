@@ -30,56 +30,6 @@ typedef void (*cb_group_namelist_change_ftype)(Tox*, int, int, uint8_t, void*);
 static void cb_group_namelist_change_wrapper_for_go(Tox *m, cb_group_namelist_change_ftype fn, void *userdata)
 { tox_callback_group_namelist_change(m, fn, userdata); }
 
-
-// fix 2dim array
-typedef struct _StringArray {
-    int length;
-    uint16_t *lengths;
-    char *data;
-} StringArray;
-static StringArray* StringArrayNew(int len)
-{
-    StringArray *arr = calloc(1, sizeof(StringArray));
-    arr->length = len;
-    arr->lengths = calloc(1, len * sizeof(uint16_t));
-    arr->data = calloc(1, sizeof(char[len][TOX_MAX_NAME_LENGTH]));
-    return arr;
-}
-static void StringArrayFree(StringArray *arr)
-{
-    free(arr->data);
-    free(arr->lengths);
-    free(arr);
-}
-
-static char *StringArrayAt(StringArray *arr, int idx)
-{
-    return &arr->data[idx*TOX_MAX_NAME_LENGTH];
-}
-static uint16_t StringArrayLenAt(StringArray *arr, int idx)
-{
-    return arr->lengths[idx];
-}
-static char *StringArrayGet(StringArray *arr, int idx, uint16_t *len)
-{
-    *len = arr->lengths[idx];
-    return &arr->data[idx*TOX_MAX_NAME_LENGTH];
-}
-
-static StringArray* tox_group_get_names_wrapper(Tox *t, int groupNumber)
-{
-    int sz = tox_group_number_peers(t, groupNumber);
-    StringArray *arr = StringArrayNew(sz);
-    int ret = tox_group_get_names(t, groupNumber,
-              (uint8_t(*)[TOX_MAX_NAME_LENGTH])(arr->data),
-              arr->lengths, sz);
-    if (ret == -1) {
-        StringArrayFree(arr);
-        return NULL;
-    }
-    return arr;
-}
-
 // fix nouse compile warning
 static inline void fixnousetoxgroup() {
     cb_group_invite_wrapper_for_go(NULL, NULL, NULL);
@@ -87,13 +37,6 @@ static inline void fixnousetoxgroup() {
     cb_group_action_wrapper_for_go(NULL, NULL, NULL);
     cb_group_title_wrapper_for_go(NULL, NULL, NULL);
     cb_group_namelist_change_wrapper_for_go(NULL, NULL, NULL);
-
-    StringArray *arr = NULL;
-    StringArrayFree(arr);
-    StringArrayAt(arr, 0);
-    StringArrayLenAt(arr, 0);
-    StringArrayGet(arr, 0, NULL);
-    tox_group_get_names_wrapper(0, 0);
 }
 
 */
@@ -208,6 +151,9 @@ func (this *Tox) CallbackGroupNameListChange(cbfn cb_group_namelist_change_ftype
 
 func (this *Tox) AddGroupChat() (int, error) {
 	r := C.tox_add_groupchat(this.toxcore)
+	if int(r) == -1 {
+		return int(r), errors.New("add group chat failed")
+	}
 	return int(r), nil
 }
 
@@ -215,6 +161,9 @@ func (this *Tox) DelGroupChat(groupNumber int) (int, error) {
 	var _gn = C.int(groupNumber)
 
 	r := C.tox_del_groupchat(this.toxcore, _gn)
+	if int(r) == -1 {
+		return int(r), errors.New("delete group chat failed")
+	}
 	return int(r), nil
 }
 
@@ -263,6 +212,9 @@ func (this *Tox) JoinGroupChat(friendNumber uint32, data string, length uint16) 
 	var _length = C.uint16_t(length)
 
 	r := C.tox_join_groupchat(this.toxcore, _fn, char2uint8(_data), _length)
+	if int(r) == -1 {
+		return int(r), errors.New("join group chat failed")
+	}
 	return int(r), nil
 }
 
@@ -273,6 +225,9 @@ func (this *Tox) GroupActionSend(groupNumber int, action string) (int, error) {
 	var _length = C.uint16_t(len(action))
 
 	r := C.tox_group_action_send(this.toxcore, _gn, char2uint8(_action), _length)
+	if int(r) == -1 {
+		return int(r), errors.New("group action failed")
+	}
 	return int(r), nil
 }
 
@@ -283,6 +238,9 @@ func (this *Tox) GroupMessageSend(groupNumber int, message string) (int, error) 
 	var _length = C.uint16_t(len(message))
 
 	r := C.tox_group_message_send(this.toxcore, _gn, char2uint8(_message), _length)
+	if int(r) == -1 {
+		return int(r), errors.New("group send message failed")
+	}
 	return int(r), nil
 }
 
@@ -293,6 +251,12 @@ func (this *Tox) GroupSetTitle(groupNumber int, title string) (int, error) {
 	var _length = C.uint8_t(len(title))
 
 	r := C.tox_group_set_title(this.toxcore, _gn, char2uint8(_title), _length)
+	if int(r) == -1 {
+		if len(title) > MAX_NAME_LENGTH {
+			return int(r), errors.New("title too long")
+		}
+		return int(r), errors.New("set title failed")
+	}
 	return int(r), nil
 }
 
@@ -310,12 +274,12 @@ func (this *Tox) GroupGetTitle(groupNumber int) (string, error) {
 	return title, nil
 }
 
-func (this *Tox) GroupPeerNumberIsOurs(groupNumber int, peerNumber int) (uint, error) {
+func (this *Tox) GroupPeerNumberIsOurs(groupNumber int, peerNumber int) bool {
 	var _gn = C.int(groupNumber)
 	var _pn = C.int(peerNumber)
 
 	r := C.tox_group_peernumber_is_ours(this.toxcore, _gn, _pn)
-	return uint(r), nil
+	return uint(r) == 1
 }
 
 func (this *Tox) GroupNumberPeers(groupNumber int) int {
@@ -326,23 +290,60 @@ func (this *Tox) GroupNumberPeers(groupNumber int) int {
 }
 
 func (this *Tox) GroupGetNames(groupNumber int) []string {
-	arr := C.tox_group_get_names_wrapper(this.toxcore, C.int(groupNumber))
-	if arr == nil {
-		return make([]string, 0)
+	peerCount := this.GroupNumberPeers(groupNumber)
+	vec := make([]string, peerCount)
+
+	lengths := make([]uint16, peerCount)
+	names := make([]byte, peerCount*MAX_NAME_LENGTH)
+	clengths := (*C.uint16_t)(&lengths[0])
+	cnames := (*[MAX_NAME_LENGTH]C.uint8_t)((unsafe.Pointer)(&names[0]))
+
+	r := C.tox_group_get_names(this.toxcore, C.int(groupNumber),
+		cnames, clengths, C.uint16_t(peerCount))
+	if int(r) == -1 {
+		return []string{}
 	}
 
-	var len C.uint16_t
-	vec := make([]string, int(arr.length))
-	for idx := 0; idx < int(arr.length); idx++ {
-		// len := C.StringArrayLenAt(arr, C.int(idx))
-		data0 := C.StringArrayAt(arr, C.int(idx))
-		if data0 == nil {
+	for idx := 0; idx < peerCount; idx++ {
+		len := int(lengths[idx])
+		name := names[idx*MAX_NAME_LENGTH : (idx*MAX_NAME_LENGTH + len)]
+		vec[idx] = string(name)
+	}
+
+	return vec
+}
+
+func (this *Tox) GroupGetPeerPubkeys(groupNumber int) []string {
+	vec := make([]string, 0)
+	peerCount := this.GroupNumberPeers(groupNumber)
+	maxcnt := 65536
+	for peerNumber := 0; peerNumber < maxcnt; peerNumber++ {
+		pubkey, err := this.GroupPeerPubkey(groupNumber, peerNumber)
+		if err != nil {
+		} else {
+			vec = append(vec, pubkey)
 		}
-
-		data := C.StringArrayGet(arr, C.int(idx), &len)
-		vec[idx] = C.GoStringN((data), C.int(len))
+		if len(vec) >= peerCount {
+			break
+		}
 	}
-	C.StringArrayFree(arr)
+	return vec
+}
+
+func (this *Tox) GroupGetPeers(groupNumber int) map[int]string {
+	vec := make(map[int]string, 0)
+	peerCount := this.GroupNumberPeers(groupNumber)
+	maxcnt := 65536
+	for peerNumber := 0; peerNumber < maxcnt; peerNumber++ {
+		pubkey, err := this.GroupPeerPubkey(groupNumber, peerNumber)
+		if err != nil {
+		} else {
+			vec[peerNumber] = pubkey
+		}
+		if len(vec) >= peerCount {
+			break
+		}
+	}
 	return vec
 }
 
@@ -366,5 +367,8 @@ func (this *Tox) GroupGetType(groupNumber int) (int, error) {
 	var _gn = C.int(groupNumber)
 
 	r := C.tox_group_get_type(this.toxcore, _gn)
+	if int(r) == -1 {
+		return int(r), errors.New("get type failed")
+	}
 	return int(r), nil
 }
