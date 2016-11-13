@@ -61,12 +61,12 @@ func main() {
 	}
 	log.Println("toxid:", toxid)
 
-	defaultName, err := t.SelfGetName()
+	defaultName := t.SelfGetName()
 	humanName := nickPrefix + toxid[0:5]
 	if humanName != defaultName {
 		t.SelfSetName(humanName)
 	}
-	humanName, err = t.SelfGetName()
+	humanName = t.SelfGetName()
 	if debug {
 		log.Println(humanName, defaultName, err)
 	}
