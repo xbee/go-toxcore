@@ -12,13 +12,13 @@ import (
 */
 import "C"
 
-type UserData struct {
+type userData struct {
 	ud0 map[*C.Tox]*Tox
 	ud1 cmap.ConcurrentMap
 	cc  bool // concurrent?
 }
 
-func NewUserData() *UserData {
+func newUserData() *userData {
 	cc := true
 	var ud0 map[*C.Tox]*Tox
 	var ud1 cmap.ConcurrentMap
@@ -30,21 +30,21 @@ func NewUserData() *UserData {
 		ud1 = cmap.New()
 	}
 
-	return &UserData{ud0: ud0, ud1: ud1, cc: cc}
+	return &userData{ud0: ud0, ud1: ud1, cc: cc}
 }
 
-func (this *UserData) Set(ctox *C.Tox, gtox *Tox) {
+func (this *userData) set(ctox *C.Tox, gtox *Tox) {
 	if this.cc {
-		key := fmt.Sprintf("%v", ctox)
+		key := this.obj2Str(ctox)
 		this.ud1.Set(key, gtox)
 	} else {
 		this.ud0[ctox] = gtox
 	}
 }
 
-func (this *UserData) Get(ctox *C.Tox) *Tox {
+func (this *userData) get(ctox *C.Tox) *Tox {
 	if this.cc {
-		key := fmt.Sprintf("%v", ctox)
+		key := this.obj2Str(ctox)
 		ival, ok := this.ud1.Get(key)
 		if !ok {
 			return nil
@@ -59,13 +59,17 @@ func (this *UserData) Get(ctox *C.Tox) *Tox {
 	}
 }
 
-func (this *UserData) Del(ctox *C.Tox) {
+func (this *userData) del(ctox *C.Tox) {
 	if this.cc {
-		key := fmt.Sprintf("%v", ctox)
+		key := this.obj2Str(ctox)
 		this.ud1.Remove(key)
 	} else {
 		if _, ok := this.ud0[ctox]; ok {
 			delete(this.ud0, ctox)
 		}
 	}
+}
+
+func (this *userData) obj2Str(ctox *C.Tox) string {
+	return fmt.Sprintf("%p", ctox)
 }

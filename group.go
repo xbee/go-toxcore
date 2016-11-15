@@ -60,7 +60,7 @@ type cb_group_namelist_change_ftype func(this *Tox, groupNumber int, peerNumber 
 
 //export callbackGroupInviteWrapperForC
 func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
-	var this = cbUserDatas.Get(m)
+	var this = cbUserDatas.get(m)
 	if this.cb_group_invite != nil {
 		this.cb_group_invite(this, uint32(a0), uint8(a1), (*uint8)(a2), uint16(a3), this.cb_group_invite_user_data)
 	}
@@ -78,7 +78,7 @@ func (this *Tox) CallbackGroupInvite(cbfn cb_group_invite_ftype, userData interf
 
 //export callbackGroupMessageWrapperForC
 func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.int8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
-	var this = cbUserDatas.Get(m)
+	var this = cbUserDatas.get(m)
 	if this.cb_group_message != nil {
 		message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
 		this.cb_group_message(this, int(a0), int(a1), message, this.cb_group_message_user_data)
@@ -97,7 +97,7 @@ func (this *Tox) CallbackGroupMessage(cbfn cb_group_message_ftype, userData inte
 
 //export callbackGroupActionWrapperForC
 func callbackGroupActionWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
-	var this = cbUserDatas.Get(m)
+	var this = cbUserDatas.get(m)
 	if this.cb_group_action != nil {
 		this.cb_group_action(this, int(a0), int(a1), (*uint8)(a2), uint16(a3), this.cb_group_action_user_data)
 	}
@@ -115,7 +115,7 @@ func (this *Tox) CallbackGroupAction(cbfn cb_group_action_ftype, userData interf
 
 //export callbackGroupTitleWrapperForC
 func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint8_t, a4 unsafe.Pointer) {
-	var this = cbUserDatas.Get(m)
+	var this = cbUserDatas.get(m)
 	if this.cb_group_title != nil {
 		this.cb_group_title(this, int(a0), int(a1), (*uint8)(a2), uint8(a3), this.cb_group_title_user_data)
 	}
@@ -133,7 +133,7 @@ func (this *Tox) CallbackGroupTitle(cbfn cb_group_title_ftype, userData interfac
 
 //export callbackGroupNameListChangeWrapperForC
 func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 C.uint8_t, a3 unsafe.Pointer) {
-	var this = cbUserDatas.Get(m)
+	var this = cbUserDatas.get(m)
 	if this.cb_group_namelist_change != nil {
 		this.cb_group_namelist_change(this, int(a0), int(a1), uint8(a2), this.cb_group_namelist_change_user_data)
 	}
