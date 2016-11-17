@@ -516,6 +516,7 @@ func (this *Tox) Kill() {
 	}
 
 	C.tox_kill(this.toxcore)
+	cbUserDatas.del(this.toxcore)
 	this.toxcore = nil
 }
 
@@ -602,10 +603,10 @@ func (this *Tox) FriendAdd(friendId string, message string) (uint32, error) {
 
 func (this *Tox) FriendAddNorequest(friendId string) (uint32, error) {
 	friendId_b, err := hex.DecodeString(friendId)
-	friendId_p := unsafe.Pointer(&friendId_b[0])
 	if err != nil {
-		log.Panic(err)
+		return 0, err
 	}
+	friendId_p := unsafe.Pointer(&friendId_b[0])
 
 	var cerr C.TOX_ERR_FRIEND_ADD
 	r := C.tox_friend_add_norequest(this.toxcore, pointer2uint8(friendId_p), &cerr)
@@ -616,7 +617,10 @@ func (this *Tox) FriendAddNorequest(friendId string) (uint32, error) {
 }
 
 func (this *Tox) FriendByPublicKey(pubkey string) (uint32, error) {
-	var pubkey_b, _ = hex.DecodeString(pubkey)
+	pubkey_b, err := hex.DecodeString(pubkey)
+	if err != nil {
+		return 0, err
+	}
 	var pubkey_p = unsafe.Pointer(&pubkey_b[0])
 
 	var cerr C.TOX_ERR_FRIEND_BY_PUBLIC_KEY

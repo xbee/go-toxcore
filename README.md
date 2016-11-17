@@ -22,6 +22,10 @@ The golang bindings for libtoxcore
     t := tox.NewTox(nil)
     av := tox.NewToxAv(t)
 
+### Tests
+
+    go test -v -covermode count
+    
 
 Contributing
 ------------

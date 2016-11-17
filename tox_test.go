@@ -224,49 +224,15 @@ func TestBootstrap(t *testing.T) {
 	})
 }
 
-// login udp / login tcp
-func TestLogin(t *testing.T) {
-	_t := NewTox(nil)
-	defer _t.Kill()
-
-	t.Run("default", func(t *testing.T) {
-
-	})
-	stopch := make(chan struct{}, 0)
-	_t.CallbackSelfConnectionStatus(func(_t *Tox, status uint32, d interface{}) {
-		t.Log(status)
-		stopch <- struct{}{}
-	}, nil)
-
-	go func() {
-		interval := _t.IterationInterval()
-		tickch := time.Tick(time.Duration(interval) * time.Millisecond)
-		for {
-			select {
-			case <-tickch:
-				_t.Iterate()
-			}
-		}
-	}()
-
-	t.Log("waiting...")
-	<-stopch
-}
-
 type MiniTox struct {
-	t *Tox
+	t      *Tox
+	stopch chan struct{}
 }
 
 func NewMiniTox() *MiniTox {
 	this := &MiniTox{}
 	this.t = NewTox(nil)
-	return this
-}
-
-func NewMiniTox2() *MiniTox {
-	this := &MiniTox{}
-	opts := NewToxOptions()
-	this.t = NewTox(opts)
+	this.stopch = make(chan struct{}, 0)
 	return this
 }
 
@@ -276,6 +242,8 @@ func (this *MiniTox) Iterate() {
 		select {
 		case <-tickch:
 			this.t.Iterate()
+		case <-this.stopch:
+			return
 		}
 	}
 }
@@ -292,15 +260,26 @@ func (this *MiniTox) bootstrap() {
 	}
 }
 
+func (this *MiniTox) stop() {
+	this.stopch <- struct{}{}
+}
+
 var err error
 
-func waitcond(cond func() bool) {
+func waitcond(cond func() bool, timeout int) {
 	// TODO might infinite loop
+	btime := time.Now()
 	cnter := 0
 	for {
 		if cond() {
-			print("\n")
+			// print("\n")
 			return
+		}
+
+		etime := time.Now()
+		dtime := etime.Sub(btime)
+		if timeout > 0 && int(dtime.Seconds()) > timeout {
+			return // timeout
 		}
 
 		if cnter%15 == 0 {
@@ -311,123 +290,155 @@ func waitcond(cond func() bool) {
 	}
 }
 
-func _TestFriend(t *testing.T) {
-	stopch := make(chan struct{}, 0)
-	t1 := NewMiniTox()
-	t2 := NewMiniTox()
-	// t1.bootstrap()
-	// t2.bootstrap()
-
-	t1.t.CallbackFriendRequest(func(_ *Tox, friendId, msg string, d interface{}) {
-		println("got request", friendId, msg)
-		_, err := t1.t.FriendAddNorequest(friendId)
-		if err != nil {
-			t.Fail()
+// login udp / login tcp
+func TestLogin(t *testing.T) {
+	t.Run("connect", func(t *testing.T) {
+		_t := NewMiniTox()
+		defer _t.t.Kill()
+		_t.bootstrap()
+		waitcond(func() bool {
+			if _t.t.IterationInterval() == 0 {
+				t.Error("why")
+			}
+			_t.t.Iterate()
+			if _t.t.SelfGetConnectionStatus() > CONNECTION_NONE {
+				return true
+			}
+			return false
+		}, 60)
+		if _t.t.SelfGetConnectionStatus() == CONNECTION_NONE {
+			t.Error("maybe iterate not use")
 		}
-	}, nil)
-	t1.t.CallbackFriendMessage(func(_ *Tox, friendNumber uint32, msg string, d interface{}) {
-		println(friendNumber, msg)
-	}, nil)
-	t1.t.CallbackFriendConnectionStatus(func(_ *Tox, friendNumber uint32, status uint32,
-		d interface{}) {
-		println(friendNumber, status)
-	}, nil)
-	t1nameChanged := false
-	t2.t.CallbackFriendName(func(_ *Tox, friendNumber uint32, name string, d interface{}) {
-		t.Log(friendNumber, name)
-		if len(name) > 0 {
-			t1nameChanged = true
-		}
-	}, nil)
-	t1statusMessageChanged := false
-	t2.t.CallbackFriendStatusMessage(func(_ *Tox, friendNumber uint32, stmsg string, d interface{}) {
-		t.Log(friendNumber, stmsg)
-		if len(stmsg) > 0 {
-			t1statusMessageChanged = true
-		}
-	}, nil)
+	})
+}
 
-	go t1.Iterate()
-	go t2.Iterate()
+func TestFriend(t *testing.T) {
 
-	go func() {
+	t.Run("add friend", func(t *testing.T) {
+		t1 := NewMiniTox()
+		t2 := NewMiniTox()
+		defer t1.t.Kill()
+		defer t2.t.Kill()
+
+		t1.t.CallbackFriendRequest(func(_ *Tox, friendId, msg string, d interface{}) {
+			_, err := t1.t.FriendAddNorequest(friendId)
+			if err != nil {
+				t.Fail()
+			}
+		}, nil)
+
+		go t1.Iterate()
+		go t2.Iterate()
+		defer t1.stop()
+		defer t2.stop()
+
 		waitcond(func() bool {
 			return t1.t.SelfGetConnectionStatus() == 2 && t2.t.SelfGetConnectionStatus() == 2
-		})
+		}, 100)
 		friendNumber, err := t2.t.FriendAdd(t1.t.SelfGetAddress(), "hoho")
 		if err != nil {
-			println(err)
-			t.Fail()
+			t.Error(err, friendNumber)
 		}
 		_, err = t2.t.FriendAdd(t1.t.SelfGetAddress(), "hehe")
 		if err == nil {
-			t.Fail()
+			t.Error(err)
 		}
 		if t2.t.SelfGetFriendListSize() != 1 {
-			t.Fail()
+			t.Error("friend size not match")
 		}
 		lst := t2.t.SelfGetFriendList()
 		if len(lst) != 1 {
-			t.Fail()
+			t.Error("friend list not match")
 		}
 
 		friendNumber2, err := t2.t.FriendByPublicKey(t1.t.SelfGetAddress())
 		if err != nil {
-			t.Fail()
+			t.Error(err)
 		}
 		if friendNumber2 != friendNumber {
-			t.Fail()
+			t.Error("friend number not match")
 		}
 		pubkey, err := t2.t.FriendGetPublicKey(friendNumber)
 		if err != nil {
-			t.Fail()
+			t.Error(err, pubkey)
 		}
 		if pubkey != t1.t.SelfGetPublicKey() {
-			t.Fail()
+			t.Error("friend pubkey not match")
 		}
 		if !t2.t.FriendExists(friendNumber) {
-			t.Fail()
+			t.Error("added friend not exists")
 		}
+	})
 
-		println("wait frined count", friendNumber, t2.t.SelfGetFriendListSize())
+	t.Run("friend status", func(t *testing.T) {
+		t1 := NewMiniTox()
+		t2 := NewMiniTox()
+		defer t1.t.Kill()
+		defer t2.t.Kill()
+
+		t1.t.CallbackFriendRequest(func(_ *Tox, friendId, msg string, d interface{}) {
+			t1.t.FriendAddNorequest(friendId)
+		}, nil)
+
+		// testing
+		t1.t.CallbackFriendConnectionStatus(func(_ *Tox, friendNumber uint32, status uint32,
+			d interface{}) {
+		}, nil)
+		t1nameChanged := false
+		t2.t.CallbackFriendName(func(_ *Tox, friendNumber uint32, name string, d interface{}) {
+			if len(name) > 0 {
+				t1nameChanged = true
+			}
+		}, nil)
+		t1statusMessageChanged := false
+		t2.t.CallbackFriendStatusMessage(func(_ *Tox, friendNumber uint32, stmsg string, d interface{}) {
+			if len(stmsg) > 0 {
+				t1statusMessageChanged = true
+			}
+		}, nil)
+
+		go t1.Iterate()
+		go t2.Iterate()
+		defer t1.stop()
+		defer t2.stop()
+
+		waitcond(func() bool {
+			return t1.t.SelfGetConnectionStatus() == 2 && t2.t.SelfGetConnectionStatus() == 2
+		}, 100)
+		friendNumber, _ := t2.t.FriendAdd(t1.t.SelfGetAddress(), "hoho")
+
 		waitcond(func() bool {
 			return 1 == t1.t.SelfGetFriendListSize()
-		})
+		}, 100)
 		waitcond(func() bool {
 			status, err := t2.t.FriendGetConnectionStatus(friendNumber)
 			if err != nil {
+				t.Error(err, status)
 				return false
 			}
-			return status == 2
-		})
-		_, err = t2.t.FriendSendMessage(friendNumber, "foo")
-		if err != nil {
-			t.Fail()
-		}
-		_, err = t2.t.FriendSendAction(friendNumber, "actfoo")
-		if err != nil {
-			t.Fail()
+			return status > CONNECTION_NONE
+		}, 100)
+		if status, err := t2.t.FriendGetConnectionStatus(friendNumber); err != nil || status == CONNECTION_NONE {
+			t.Error(err, status)
 		}
 
 		err = t1.t.SelfSetName("t1")
 		if err != nil {
-			t.Fail()
+			t.Error(err)
 		}
-		waitcond(func() bool { return t1nameChanged })
+		waitcond(func() bool { return t1nameChanged }, 100)
 		t1name, err := t2.t.FriendGetName(friendNumber)
 		if err != nil {
 			t.Error(err)
-			t.Fail()
 		}
 		if t1name != "t1" {
 			t.Error(t1name)
-			t.Fail()
 		}
 		_, err = t1.t.SelfSetStatusMessage("t1status")
 		if err != nil {
 			t.Error(err)
 		}
-		waitcond(func() bool { return t1statusMessageChanged })
+		waitcond(func() bool { return t1statusMessageChanged }, 100)
 		t1stmsg, err := t2.t.FriendGetStatusMessage(friendNumber)
 		if err != nil {
 			t.Error(err)
@@ -450,18 +461,95 @@ func _TestFriend(t *testing.T) {
 		if t1st != uint8(USER_STATUS_NONE) {
 			t.Error(t1st)
 		}
+	})
 
+	t.Run("friend message", func(t *testing.T) {
+		t1 := NewMiniTox()
+		t2 := NewMiniTox()
+		defer t1.t.Kill()
+		defer t2.t.Kill()
+
+		t1.t.CallbackFriendRequest(func(_ *Tox, friendId, msg string, d interface{}) {
+			t1.t.FriendAddNorequest(friendId)
+		}, nil)
+		recvmsg := ""
+		t1.t.CallbackFriendMessage(func(_ *Tox, friendNumber uint32, msg string, d interface{}) {
+			recvmsg = msg
+		}, nil)
+
+		go t1.Iterate()
+		go t2.Iterate()
+		defer t1.stop()
+		defer t2.stop()
+
+		waitcond(func() bool {
+			return t1.t.SelfGetConnectionStatus() == 2 && t2.t.SelfGetConnectionStatus() == 2
+		}, 100)
+		friendNumber, _ := t2.t.FriendAdd(t1.t.SelfGetAddress(), "hoho")
+		waitcond(func() bool {
+			return 1 == t1.t.SelfGetFriendListSize()
+		}, 100)
+		waitcond(func() bool {
+			status, _ := t2.t.FriendGetConnectionStatus(friendNumber)
+			return status > CONNECTION_NONE
+		}, 100)
+		_, err := t2.t.FriendSendMessage(friendNumber, "hohoo")
+		if err != nil {
+			t.Error(err)
+		}
+		waitcond(func() bool {
+			return len(recvmsg) > 0
+		}, 100)
+		if recvmsg != "hohoo" {
+			t.Error("send/recv message failed")
+		}
+		_, err = t2.t.FriendSendAction(friendNumber, "actfoo")
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+	t.Run("friend delete", func(t *testing.T) {
+		t1 := NewMiniTox()
+		t2 := NewMiniTox()
+		defer t1.t.Kill()
+		defer t2.t.Kill()
+
+		t1.t.CallbackFriendRequest(func(_ *Tox, friendId, msg string, d interface{}) {
+			t1.t.FriendAddNorequest(friendId)
+		}, nil)
+
+		go t1.Iterate()
+		go t2.Iterate()
+		defer t1.stop()
+		defer t2.stop()
+
+		waitcond(func() bool {
+			return t1.t.SelfGetConnectionStatus() == 2 && t2.t.SelfGetConnectionStatus() == 2
+		}, 100)
+		friendNumber, _ := t2.t.FriendAdd(t1.t.SelfGetAddress(), "hoho")
+		waitcond(func() bool {
+			return 1 == t1.t.SelfGetFriendListSize()
+		}, 100)
 		_, err = t2.t.FriendDelete(friendNumber)
 		if err != nil {
-			t.Fail()
+			t.Error(err)
 		}
 		if t2.t.FriendExists(friendNumber) {
-			t.Fail()
+			t.Error("deleted friend appearence")
 		}
+		_, err = t2.t.FriendDelete(friendNumber)
+		if err == nil {
+			t.Error("delete deleted friend should failed")
+		}
+	})
+}
 
-		stopch <- struct{}{}
-	}()
+func TestGroup(t *testing.T) {
+}
 
-	t.Log("waiting...")
-	<-stopch
+func TestAv(t *testing.T) {
+}
+
+func TestFile(t *testing.T) {
 }
