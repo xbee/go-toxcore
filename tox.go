@@ -836,7 +836,7 @@ func (this *Tox) SelfGetUserStatus() uint8 {
 	return uint8(r)
 }
 
-func (this *Tox) GetLastOnline(friendNumber uint32) (uint64, error) {
+func (this *Tox) FriendGetLastOnline(friendNumber uint32) (uint64, error) {
 	var _fn = C.uint32_t(friendNumber)
 
 	var cerr C.TOX_ERR_FRIEND_GET_LAST_ONLINE

@@ -55,6 +55,9 @@ static inline void fixnousetoxav() {
 */
 import "C"
 import "unsafe"
+import (
+	"errors"
+)
 
 type cb_call_ftype func(this *ToxAV, friendNumber uint32, audioEnabled bool, videoEnabled bool, userData interface{})
 type cb_call_state_ftype func(this *ToxAV, friendNumber uint32, state uint32, userData interface{})
@@ -308,3 +311,16 @@ func (this *ToxAV) CallbackVideoReceiveFrame(cbfn cb_video_receive_frame_ftype, 
 // toxav_add_av_groupchat
 // toxav_join_av_groupchat
 // toxav_group_send_audio
+
+func (this *Tox) JoinAVGroupChat(friendNumber uint32, data []byte) (int, error) {
+	var _fn = C.int32_t(friendNumber)
+	var _data = (*C.char)((unsafe.Pointer)(&data[0]))
+	var length = len(data)
+	var _length = C.uint16_t(length)
+
+	r := C.toxav_join_av_groupchat(this.toxcore, _fn, char2uint8(_data), _length, nil, nil)
+	if int(r) == -1 {
+		return int(r), errors.New("join av group chat failed")
+	}
+	return int(r), nil
+}

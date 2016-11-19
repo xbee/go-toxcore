@@ -50,10 +50,10 @@ import (
 )
 
 // group callback type
-type cb_group_invite_ftype func(this *Tox, friendNumber uint32, itype uint8, data *uint8, length uint16, userData interface{})
+type cb_group_invite_ftype func(this *Tox, friendNumber uint32, itype uint8, data []byte, userData interface{})
 type cb_group_message_ftype func(this *Tox, groupNumber int, peerNumber int, message string, userData interface{})
-type cb_group_action_ftype func(this *Tox, groupNumber int, peerNumber int, action *uint8, length uint16, userData interface{})
-type cb_group_title_ftype func(this *Tox, groupNumber int, peerNumber int, title *uint8, length uint8, userData interface{})
+type cb_group_action_ftype func(this *Tox, groupNumber int, peerNumber int, action string, userData interface{})
+type cb_group_title_ftype func(this *Tox, groupNumber int, peerNumber int, title string, userData interface{})
 type cb_group_namelist_change_ftype func(this *Tox, groupNumber int, peerNumber int, change uint8, userData interface{})
 
 // tox_callback_group_***
@@ -62,7 +62,8 @@ type cb_group_namelist_change_ftype func(this *Tox, groupNumber int, peerNumber 
 func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_group_invite != nil {
-		this.cb_group_invite(this, uint32(a0), uint8(a1), (*uint8)(a2), uint16(a3), this.cb_group_invite_user_data)
+		data := C.GoBytes((unsafe.Pointer)(a2), C.int(a3))
+		this.cb_group_invite(this, uint32(a0), uint8(a1), data, this.cb_group_invite_user_data)
 	}
 }
 
@@ -99,7 +100,8 @@ func (this *Tox) CallbackGroupMessage(cbfn cb_group_message_ftype, userData inte
 func callbackGroupActionWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_group_action != nil {
-		this.cb_group_action(this, int(a0), int(a1), (*uint8)(a2), uint16(a3), this.cb_group_action_user_data)
+		action := C.GoStringN((*C.char)((unsafe.Pointer)(a2)), C.int(a3))
+		this.cb_group_action(this, int(a0), int(a1), action, this.cb_group_action_user_data)
 	}
 }
 
@@ -117,7 +119,8 @@ func (this *Tox) CallbackGroupAction(cbfn cb_group_action_ftype, userData interf
 func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint8_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_group_title != nil {
-		this.cb_group_title(this, int(a0), int(a1), (*uint8)(a2), uint8(a3), this.cb_group_title_user_data)
+		title := C.GoStringN((*C.char)((unsafe.Pointer)(a2)), C.int(a3))
+		this.cb_group_title(this, int(a0), int(a1), title, this.cb_group_title_user_data)
 	}
 }
 
@@ -205,10 +208,10 @@ func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error)
 	return int(r), nil
 }
 
-func (this *Tox) JoinGroupChat(friendNumber uint32, data string, length uint16) (int, error) {
+func (this *Tox) JoinGroupChat(friendNumber uint32, data []byte) (int, error) {
 	var _fn = C.int32_t(friendNumber)
-	var _data = C.CString(data)
-	defer C.free(unsafe.Pointer(_data))
+	var _data = (*C.char)((unsafe.Pointer)(&data[0]))
+	var length = len(data)
 	var _length = C.uint16_t(length)
 
 	r := C.tox_join_groupchat(this.toxcore, _fn, char2uint8(_data), _length)
