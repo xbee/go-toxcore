@@ -2,6 +2,11 @@ package tox
 
 import (
 	"encoding/hex"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -381,7 +386,7 @@ func TestFriend(t *testing.T) {
 		}, nil)
 
 		// testing
-		t1.t.CallbackFriendConnectionStatus(func(_ *Tox, friendNumber uint32, status uint32,
+		t1.t.CallbackFriendConnectionStatus(func(_ *Tox, friendNumber uint32, status int,
 			d interface{}) {
 		}, nil)
 		t1nameChanged := false
@@ -428,11 +433,15 @@ func TestFriend(t *testing.T) {
 		}
 		waitcond(func() bool { return t1nameChanged }, 100)
 		t1name, err := t2.t.FriendGetName(friendNumber)
+		t1size, err := t2.t.FriendGetNameSize(friendNumber)
 		if err != nil {
 			t.Error(err)
 		}
 		if t1name != "t1" {
 			t.Error(t1name)
+		}
+		if t1size != len(t1name) {
+			t.Error(t1size, t1name)
 		}
 		_, err = t1.t.SelfSetStatusMessage("t1status")
 		if err != nil {
@@ -545,6 +554,7 @@ func TestFriend(t *testing.T) {
 	})
 }
 
+// go test -v -run Group
 func TestGroup(t *testing.T) {
 }
 
@@ -552,4 +562,162 @@ func TestAv(t *testing.T) {
 }
 
 func TestFile(t *testing.T) {
+}
+
+func TestCovers(t *testing.T) {
+	t1 := NewMiniTox()
+	defer t1.t.Kill()
+
+	tv := reflect.ValueOf(t1.t)
+	mnum := tv.NumMethod()
+	if false {
+		t.Log(mnum)
+	}
+
+	mths := make(map[string]bool)
+	for i := 0; i < mnum; i++ {
+		mth := tv.Type().Method(i)
+		// t.Log(i, mth.Name)
+		mths[mth.Name] = true
+	}
+
+	//
+	_, file, _, _ := runtime.Caller(0)
+	t.Log(file)
+
+	fset := token.NewFileSet() // positions are relative to fset
+
+	// Parse the file containing this very example
+	// but stop after processing the imports.
+	f, err := parser.ParseFile(fset, file, nil, 0)
+	if err != nil {
+		t.Log(err)
+		return
+	}
+
+	t.Log("walking ast...")
+	v := &callVistor{t: t}
+	v.fns = make(map[string]bool)
+	ast.Walk(v, f)
+	// t.Log(v.fns)
+
+	notins := make(map[string]bool)
+	for mn, _ := range mths {
+		if _, ok := v.fns[mn]; !ok {
+			t.Log("not found:", mn)
+			notins[mn] = false
+		}
+	}
+
+	t.Log("test covers:", mnum-len(notins), mnum)
+}
+
+type callVistor struct {
+	t   *testing.T
+	fns map[string]bool
+}
+
+func (this *callVistor) Visit(node ast.Node) (w ast.Visitor) {
+	t := this.t
+	if false {
+		nt := reflect.TypeOf(node)
+		switch nt.Kind() {
+		case reflect.Ptr:
+			t.Log(nt.Elem().Kind(), nt.Elem().Name())
+		default:
+			t.Log(nt.Kind())
+		}
+	}
+
+	switch ty := node.(type) {
+	case *ast.File:
+		for _, d := range ty.Decls {
+			this.Visit(d)
+		}
+	case *ast.FuncDecl:
+		this.Visit(ty.Body)
+	case *ast.GenDecl:
+		for _, d := range ty.Specs {
+			this.Visit(d)
+		}
+	case *ast.BlockStmt:
+		for _, s := range ty.List {
+			this.Visit(s)
+		}
+	case *ast.ExprStmt:
+		this.Visit(ty.X)
+	case *ast.CallExpr:
+		// t.Logf("%+v\n", ty)
+		this.Visit(ty.Fun)
+		for _, a := range ty.Args {
+			this.Visit(a)
+		}
+	case *ast.FuncLit:
+		this.Visit(ty.Body)
+	case *ast.IfStmt:
+		this.Visit(ty.Body)
+		this.Visit(ty.Cond)
+		if ty.Init != nil {
+			this.Visit(ty.Init)
+		}
+		if ty.Else != nil {
+			this.Visit(ty.Else)
+		}
+	case *ast.AssignStmt:
+		for _, s := range ty.Rhs {
+			this.Visit(s)
+		}
+	case *ast.ForStmt:
+		if ty.Cond != nil {
+			this.Visit(ty.Cond)
+		}
+		this.Visit(ty.Body)
+		if ty.Init != nil {
+			this.Visit(ty.Init)
+		}
+		if ty.Post != nil {
+			this.Visit(ty.Post)
+		}
+	case *ast.ReturnStmt:
+		for _, s := range ty.Results {
+			this.Visit(s)
+		}
+	case *ast.SwitchStmt:
+		if ty.Init != nil {
+			this.Visit(ty.Init)
+		}
+		this.Visit(ty.Body)
+	case *ast.GoStmt:
+		this.Visit(ty.Call)
+	case *ast.SelectStmt:
+		this.Visit(ty.Body)
+	case *ast.SelectorExpr:
+		if ty.Sel.IsExported() {
+			// t.Log(ty.Sel.String(), ty.Sel.Name, ty.X)
+			this.fns[ty.Sel.Name] = true
+		}
+		this.Visit(ty.X)
+	case *ast.BinaryExpr:
+		this.Visit(ty.X)
+		this.Visit(ty.Y)
+	case *ast.UnaryExpr:
+		this.Visit(ty.X)
+	case *ast.ValueSpec:
+		for _, v := range ty.Values {
+			this.Visit(v)
+		}
+	case *ast.CaseClause:
+		for _, b := range ty.Body {
+			this.Visit(b)
+		}
+		for _, l := range ty.List {
+			this.Visit(l)
+		}
+	default:
+		if false {
+			t.Logf("%+v, %+v ===\n", ty, node)
+		}
+	}
+	// t.Log(node)
+	return nil
 }

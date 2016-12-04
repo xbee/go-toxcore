@@ -105,7 +105,7 @@ func main() {
 	}
 
 	// callbacks
-	t.CallbackSelfConnectionStatus(func(t *tox.Tox, status uint32, userData interface{}) {
+	t.CallbackSelfConnectionStatus(func(t *tox.Tox, status int, userData interface{}) {
 		if debug {
 			log.Println("on self conn status:", status, userData)
 		}
@@ -129,7 +129,7 @@ func main() {
 			log.Println(n, err)
 		}
 	}, nil)
-	t.CallbackFriendConnectionStatus(func(t *tox.Tox, friendNumber uint32, status uint32, userData interface{}) {
+	t.CallbackFriendConnectionStatus(func(t *tox.Tox, friendNumber uint32, status int, userData interface{}) {
 		if debug {
 			friendId, err := t.FriendGetPublicKey(friendNumber)
 			log.Println("on friend connection status:", friendNumber, status, friendId, err)

@@ -32,7 +32,7 @@ typedef void (*cb_friend_status_ftype)(Tox *, uint32_t, TOX_USER_STATUS, void*);
 static void cb_friend_status_wrapper_for_go(Tox *m, cb_friend_status_ftype fn, void *userdata)
 { tox_callback_friend_status(m, fn, userdata); }
 
-void callbackFriendConnectionStatusWrapperForC(Tox *, uint32_t, uint32_t, void*);
+void callbackFriendConnectionStatusWrapperForC(Tox *, uint32_t, int, void*);
 typedef void (*cb_friend_connection_status_ftype)(Tox *, uint32_t, uint32_t, void*);
 static void cb_friend_connection_status_wrapper_for_go(Tox *m, cb_friend_connection_status_ftype fn, void *userdata)
 { tox_callback_friend_connection_status(m, fn, userdata); }
@@ -57,7 +57,7 @@ typedef void (*cb_friend_lossless_packet_ftype)(Tox *, uint32_t, const uint8_t*,
 static void cb_friend_lossless_packet_wrapper_for_go(Tox *m, cb_friend_lossless_packet_ftype fn, void *userdata)
 { tox_callback_friend_lossless_packet(m, fn, userdata); }
 
-void callbackSelfConnectionStatusWrapperForC(Tox *, uint32_t, void*);
+void callbackSelfConnectionStatusWrapperForC(Tox *, int, void*);
 typedef void (*cb_self_connection_status_ftype)(Tox *, TOX_CONNECTION, void*);
 static void cb_self_connection_status_wrapper_for_go(Tox *m, cb_self_connection_status_ftype fn, void *userdata)
 { tox_callback_self_connection_status(m, fn, userdata); }
@@ -129,14 +129,14 @@ type cb_friend_message_ftype func(this *Tox, friendNumber uint32, message string
 type cb_friend_name_ftype func(this *Tox, friendNumber uint32, newName string, userData interface{})
 type cb_friend_status_message_ftype func(this *Tox, friendNumber uint32, newStatus string, userData interface{})
 type cb_friend_status_ftype func(this *Tox, friendNumber uint32, status uint8, userData interface{})
-type cb_friend_connection_status_ftype func(this *Tox, friendNumber uint32, status uint32, userData interface{})
+type cb_friend_connection_status_ftype func(this *Tox, friendNumber uint32, status int, userData interface{})
 type cb_friend_typing_ftype func(this *Tox, friendNumber uint32, isTyping uint8, userData interface{})
 type cb_friend_read_receipt_ftype func(this *Tox, friendNumber uint32, receipt uint32, userData interface{})
 type cb_friend_lossy_packet_ftype func(this *Tox, friendNumber uint32, data string, userData interface{})
 type cb_friend_lossless_packet_ftype func(this *Tox, friendNumber uint32, data string, userData interface{})
 
 // self callback type
-type cb_self_connection_status_ftype func(this *Tox, status uint32, userData interface{})
+type cb_self_connection_status_ftype func(this *Tox, status int, userData interface{})
 
 // file callback type
 type cb_file_recv_control_ftype func(this *Tox, friendNumber uint32, fileNumber uint32,
@@ -204,7 +204,7 @@ var cbUserDatas = newUserData()
 func callbackFriendRequestWrapperForC(m *C.Tox, a0 *C.uint8_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_friend_request != nil {
-		pubkey_b := C.GoBytes(unsafe.Pointer(a0), 32)
+		pubkey_b := C.GoBytes(unsafe.Pointer(a0), C.int(PUBLIC_KEY_SIZE))
 		pubkey := hex.EncodeToString(pubkey_b)
 		pubkey = strings.ToUpper(pubkey)
 		message_b := C.GoBytes(unsafe.Pointer(a1), C.int(a2))
@@ -301,10 +301,10 @@ func (this *Tox) CallbackFriendStatus(cbfn cb_friend_status_ftype, userData inte
 }
 
 //export callbackFriendConnectionStatusWrapperForC
-func callbackFriendConnectionStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
+func callbackFriendConnectionStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.int, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_friend_connection_status != nil {
-		this.cb_friend_connection_status(this, uint32(a0), uint32(a1), this.cb_friend_connection_status_user_data)
+		this.cb_friend_connection_status(this, uint32(a0), int(a1), this.cb_friend_connection_status_user_data)
 	}
 }
 
@@ -393,10 +393,10 @@ func (this *Tox) CallbackFriendLosslessPacket(cbfn cb_friend_lossless_packet_fty
 }
 
 //export callbackSelfConnectionStatusWrapperForC
-func callbackSelfConnectionStatusWrapperForC(m *C.Tox, status C.uint32_t, a2 unsafe.Pointer) {
+func callbackSelfConnectionStatusWrapperForC(m *C.Tox, status C.int, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_self_connection_status != nil {
-		this.cb_self_connection_status(this, uint32(status), this.cb_self_connection_status_user_data)
+		this.cb_self_connection_status(this, int(status), this.cb_self_connection_status_user_data)
 	}
 }
 
@@ -568,7 +568,7 @@ func (this *Tox) Bootstrap(addr string, port uint16, pubkey string) (bool, error
 }
 
 func (this *Tox) SelfGetAddress() string {
-	var addr [C.TOX_ADDRESS_SIZE]byte
+	var addr [ADDRESS_SIZE]byte
 	var caddr = (*C.char)(unsafe.Pointer(&addr[0]))
 	C.tox_self_get_address(this.toxcore, char2uint8(caddr))
 
@@ -581,7 +581,6 @@ func (this *Tox) SelfGetConnectionStatus() int {
 	return int(r)
 }
 
-// int32_t tox_friend_add(Tox *tox, const uint8_t *address, const uint8_t *data, uint16_t length);
 func (this *Tox) FriendAdd(friendId string, message string) (uint32, error) {
 	friendId_b, err := hex.DecodeString(friendId)
 	friendId_p := unsafe.Pointer(&friendId_b[0])
@@ -633,7 +632,7 @@ func (this *Tox) FriendByPublicKey(pubkey string) (uint32, error) {
 
 func (this *Tox) FriendGetPublicKey(friendNumber uint32) (string, error) {
 	var _fn = C.uint32_t(friendNumber)
-	var pubkey_b = make([]byte, 32)
+	var pubkey_b = make([]byte, PUBLIC_KEY_SIZE)
 	var pubkey_p = unsafe.Pointer(&pubkey_b[0])
 
 	var cerr C.TOX_ERR_FRIEND_GET_PUBLIC_KEY
@@ -729,8 +728,8 @@ func (this *Tox) SelfGetName() string {
 
 func (this *Tox) FriendGetName(friendNumber uint32) (string, error) {
 	var _fn = C.uint32_t(friendNumber)
-	var cerr C.TOX_ERR_FRIEND_QUERY
 
+	var cerr C.TOX_ERR_FRIEND_QUERY
 	nlen := C.tox_friend_get_name_size(this.toxcore, _fn, &cerr)
 	var _name = (*C.char)(C.malloc(nlen))
 	defer C.free(unsafe.Pointer(_name))
@@ -831,7 +830,7 @@ func (this *Tox) FriendGetStatus(friendNumber uint32) (uint8, error) {
 	return uint8(r), nil
 }
 
-func (this *Tox) SelfGetUserStatus() uint8 {
+func (this *Tox) SelfGetStatus() uint8 {
 	r := C.tox_self_get_status(this.toxcore)
 	return uint8(r)
 }
@@ -900,22 +899,22 @@ func (this *Tox) SelfSetNospam(nospam uint32) {
 }
 
 func (this *Tox) SelfGetPublicKey() string {
-	var _pubkey = (*C.char)(C.malloc(32))
+	var _pubkey = (*C.char)(C.malloc(C.size_t(PUBLIC_KEY_SIZE)))
 	defer C.free(unsafe.Pointer(_pubkey))
 
 	C.tox_self_get_public_key(this.toxcore, char2uint8(_pubkey))
-	b_pubkey := C.GoBytes(unsafe.Pointer(_pubkey), 32)
+	b_pubkey := C.GoBytes(unsafe.Pointer(_pubkey), C.int(PUBLIC_KEY_SIZE))
 	h_pubkey := hex.EncodeToString(b_pubkey)
 
 	return strings.ToUpper(h_pubkey)
 }
 
 func (this *Tox) SelfGetSecretKey() string {
-	var _seckey = (*C.char)(C.malloc(32))
+	var _seckey = (*C.char)(C.malloc(C.size_t(SECRET_KEY_SIZE)))
 	defer C.free(unsafe.Pointer(_seckey))
 
 	C.tox_self_get_secret_key(this.toxcore, char2uint8(_seckey))
-	b_seckey := C.GoBytes(unsafe.Pointer(_seckey), 32)
+	b_seckey := C.GoBytes(unsafe.Pointer(_seckey), C.int(SECRET_KEY_SIZE))
 	h_seckey := hex.EncodeToString(b_seckey)
 
 	return strings.ToUpper(h_seckey)
