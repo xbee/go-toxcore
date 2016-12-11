@@ -689,7 +689,7 @@ func (this *Tox) FriendSendMessage(friendNumber uint32, message string) (uint32,
 	return uint32(r), nil
 }
 
-func (this *Tox) FriendSendAction(friendNumber uint32, action string) (int32, error) {
+func (this *Tox) FriendSendAction(friendNumber uint32, action string) (uint32, error) {
 	var _fn = C.uint32_t(friendNumber)
 	var _action = C.CString(action)
 	defer C.free(unsafe.Pointer(_action))
@@ -699,9 +699,9 @@ func (this *Tox) FriendSendAction(friendNumber uint32, action string) (int32, er
 	var cerr C.TOX_ERR_FRIEND_SEND_MESSAGE
 	r := C.tox_friend_send_message(this.toxcore, _fn, mtype, char2uint8(_action), _length, &cerr)
 	if cerr > 0 {
-		return int32(r), toxerr(cerr)
+		return uint32(r), toxerr(cerr)
 	}
-	return int32(r), nil
+	return uint32(r), nil
 }
 
 func (this *Tox) SelfSetName(name string) error {

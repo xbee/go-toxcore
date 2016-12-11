@@ -204,11 +204,18 @@ func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error)
 	var _fn = C.int32_t(friendNumber)
 	var _gn = C.int(groupNumber)
 
+	if !this.FriendExists(friendNumber) {
+		return -1, errors.New("friend not exists")
+	}
+
 	r := C.tox_invite_friend(this.toxcore, _fn, _gn)
 	return int(r), nil
 }
 
 func (this *Tox) JoinGroupChat(friendNumber uint32, data []byte) (int, error) {
+	if data == nil || len(data) < 10 {
+		return -1, errors.New("invalid data")
+	}
 	var _fn = C.int32_t(friendNumber)
 	var _data = (*C.char)((unsafe.Pointer)(&data[0]))
 	var length = len(data)
@@ -295,6 +302,9 @@ func (this *Tox) GroupNumberPeers(groupNumber int) int {
 func (this *Tox) GroupGetNames(groupNumber int) []string {
 	peerCount := this.GroupNumberPeers(groupNumber)
 	vec := make([]string, peerCount)
+	if peerCount == 0 {
+		return vec
+	}
 
 	lengths := make([]uint16, peerCount)
 	names := make([]byte, peerCount*MAX_NAME_LENGTH)
@@ -304,7 +314,7 @@ func (this *Tox) GroupGetNames(groupNumber int) []string {
 	r := C.tox_group_get_names(this.toxcore, C.int(groupNumber),
 		cnames, clengths, C.uint16_t(peerCount))
 	if int(r) == -1 {
-		return []string{}
+		return vec[0:0]
 	}
 
 	for idx := 0; idx < peerCount; idx++ {
@@ -358,6 +368,10 @@ func (this *Tox) CountChatList() uint32 {
 func (this *Tox) GetChatList() []int32 {
 	var sz uint32 = this.CountChatList()
 	vec := make([]int32, sz)
+	if sz == 0 {
+		return vec
+	}
+
 	vec_p := unsafe.Pointer(&vec[0])
 	osz := C.tox_get_chatlist(this.toxcore, (*C.int32_t)(vec_p), C.uint32_t(sz))
 	if osz == 0 {
@@ -366,12 +380,12 @@ func (this *Tox) GetChatList() []int32 {
 	return vec
 }
 
-func (this *Tox) GroupGetType(groupNumber int) (int, error) {
+func (this *Tox) GroupGetType(groupNumber int) (uint8, error) {
 	var _gn = C.int(groupNumber)
 
 	r := C.tox_group_get_type(this.toxcore, _gn)
 	if int(r) == -1 {
-		return int(r), errors.New("get type failed")
+		return uint8(r), errors.New("get type failed")
 	}
-	return int(r), nil
+	return uint8(r), nil
 }

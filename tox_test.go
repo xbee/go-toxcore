@@ -2,6 +2,7 @@ package tox
 
 import (
 	"encoding/hex"
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -554,16 +555,144 @@ func TestFriend(t *testing.T) {
 	})
 }
 
-// go test -v -run Group
+// go test -v -covermode count -run Group
 func TestGroup(t *testing.T) {
+	t.Run("add del", func(t *testing.T) {
+		t1 := NewMiniTox()
+		defer t1.t.Kill()
+
+		t1.t.CallbackFriendRequest(func(_ *Tox, friendId, msg string, d interface{}) {
+			t1.t.FriendAddNorequest(friendId)
+		}, nil)
+
+		go t1.Iterate()
+		defer t1.stop()
+
+		waitcond(func() bool {
+			return t1.t.SelfGetConnectionStatus() == 2
+		}, 100)
+		gn, err := t1.t.AddGroupChat()
+		if err != nil || gn != 0 {
+			t.Error(err)
+		}
+		_, err = t1.t.DelGroupChat(gn)
+		if err != nil {
+			t.Error(err)
+		}
+		if n := t1.t.CountChatList(); n != 0 {
+			t.Error(n)
+		}
+		if len(t1.t.GetChatList()) != 0 {
+			t.Error("should 0")
+		}
+		var gcnt = 5
+		for idx := 0; idx < gcnt; idx++ {
+			gn, err = t1.t.AddGroupChat()
+			if gn != idx {
+				t.Error(gn, idx)
+			}
+			title := fmt.Sprintf("group%d", idx)
+			_, err = t1.t.GroupSetTitle(gn, title)
+			if err != nil {
+				t.Error(err)
+			}
+			ntitle, err := t1.t.GroupGetTitle(gn)
+			if err != nil {
+				t.Error(err)
+			}
+			if ntitle != title {
+				t.Error(ntitle, title)
+			}
+			names := t1.t.GroupGetNames(gn)
+			if len(names) != 1 {
+				t.Error(len(names), 1)
+			}
+			pubkeys := t1.t.GroupGetPeerPubkeys(gn)
+			if len(pubkeys) != 1 {
+				t.Error(len(names), 1)
+			}
+			gtype, err := t1.t.GroupGetType(gn)
+			if err != nil {
+				t.Error(err)
+			}
+			if gtype != GROUPCHAT_TYPE_TEXT {
+				t.Error(gtype, GROUPCHAT_TYPE_TEXT)
+			}
+			if t1.t.GroupNumberPeers(gn) != 1 {
+				t.Error(1)
+			}
+			pname, err := t1.t.GroupPeerName(gn, 0)
+			if err != nil {
+				t.Error(err)
+			}
+			if len(pname) != len("Tox User") {
+				t.Error(pname)
+			}
+			pubkey, err := t1.t.GroupPeerPubkey(gn, 0)
+			if err != nil {
+				t.Error(err)
+			}
+			if !strings.HasPrefix(t1.t.SelfGetAddress(), pubkey) {
+				t.Error("get peer pubkey")
+			}
+			if !t1.t.GroupPeerNumberIsOurs(gn, 0) {
+				t.Error("ours")
+			}
+			if t1.t.GroupPeerNumberIsOurs(gn, 789) {
+				t.Error("not ours")
+			}
+			_, err = t1.t.GroupActionSend(gn, "abc")
+			if err == nil {
+				t.Error("should not nil")
+			}
+			_, err = t1.t.GroupMessageSend(gn, "abc")
+			if err == nil {
+				t.Error("should not nil")
+			}
+			peers := t1.t.GroupGetPeers(gn)
+			if len(peers) != 1 {
+				t.Error("should 1")
+			}
+			if _, err = t1.t.JoinGroupChat(5, nil); err == nil {
+				t.Error("should not nil")
+			}
+			if _, err = t1.t.InviteFriend(123, gn); err == nil {
+				t.Error("should nil")
+			}
+			if cnt := t1.t.CountChatList(); int(cnt) != idx+1 {
+				t.Error(cnt, idx+1)
+			}
+			if grps := t1.t.GetChatList(); len(grps) != idx+1 {
+				t.Error(len(grps), idx+1)
+			}
+		}
+		grps := t1.t.GetChatList()
+		if len(grps) != gcnt {
+			t.Error(len(grps), gcnt)
+		}
+		if t1.t.CountChatList() != uint32(gcnt) {
+			t.Error(t1.t.CountChatList(), gcnt)
+		}
+	})
+
+	t.Run("group invite", func(t *testing.T) {
+
+	})
+
+	t.Run("group message", func(t *testing.T) {
+
+	})
 }
 
+// go test -v -run Av
 func TestAv(t *testing.T) {
 }
 
+// go test -v -run File
 func TestFile(t *testing.T) {
 }
 
+// go test -v -run Covers
 func TestCovers(t *testing.T) {
 	t1 := NewMiniTox()
 	defer t1.t.Kill()
@@ -604,7 +733,7 @@ func TestCovers(t *testing.T) {
 	notins := make(map[string]bool)
 	for mn, _ := range mths {
 		if _, ok := v.fns[mn]; !ok {
-			t.Log("not found:", mn)
+			t.Log("not tested:", mn)
 			notins[mn] = false
 		}
 	}
