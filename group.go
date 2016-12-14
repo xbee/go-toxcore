@@ -204,6 +204,10 @@ func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error)
 	var _fn = C.int32_t(friendNumber)
 	var _gn = C.int(groupNumber)
 
+	// if give a friendNumber which not exists,
+	// the tox_invite_friend has a strange behaive: cause other tox_* call failed
+	// and the call will return true, but only strange thing accurs
+	// so just precheck the friendNumber and then go
 	if !this.FriendExists(friendNumber) {
 		return -1, errors.New("friend not exists")
 	}

@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"log"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -14,10 +15,17 @@ import (
 	"time"
 )
 
+// `go test -v -run Covers` will show untested functions
+// TODO boundary value testing
+
 var bsnodes = []string{
 	"biribiri.org", "33445", "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67",
 	"178.62.250.138", "33445", "788236D34978D1D5BD822F0A5BEBD2C53C64CC31CD3149350EE27D4D9A2F9B6B",
 	"198.98.51.198", "33445", "1D5A5F2F5D6233058BF0259B09622FB40B482E4FA0931EB8FD3AB8E7BF7DAF6F",
+}
+
+func init() {
+	log.SetFlags(log.Flags() | log.Lshortfile)
 }
 
 func TestCreate(t *testing.T) {
@@ -676,11 +684,160 @@ func TestGroup(t *testing.T) {
 	})
 
 	t.Run("group invite", func(t *testing.T) {
+		t1 := NewMiniTox()
+		t2 := NewMiniTox()
+		defer t1.t.Kill()
+		defer t2.t.Kill()
 
+		t1.t.CallbackFriendRequest(func(_ *Tox, friendId, msg string, d interface{}) {
+			t1.t.FriendAddNorequest(friendId)
+		}, nil)
+
+		t1.t.CallbackGroupInvite(func(_ *Tox, friendNumber uint32, itype uint8, data []byte, ud interface{}) {
+			switch itype {
+			case GROUPCHAT_TYPE_TEXT:
+				_, err := t1.t.JoinGroupChat(friendNumber, data)
+				if err != nil {
+					t.Error(err)
+				}
+			case GROUPCHAT_TYPE_AV:
+				_, err := t1.t.JoinAVGroupChat(friendNumber, data)
+				if err != nil {
+					t.Error(err)
+				}
+			}
+		}, nil)
+
+		groupNameChangeTimes := 0
+		t2.t.CallbackGroupNameListChange(func(_ *Tox, groupNumber int, peerNumber int, change uint8, ud interface{}) {
+			groupNameChangeTimes += 1
+		}, nil)
+
+		go t1.Iterate()
+		go t2.Iterate()
+		defer t1.stop()
+		defer t2.stop()
+
+		waitcond(func() bool {
+			return t1.t.SelfGetConnectionStatus() == 2 && t2.t.SelfGetConnectionStatus() == 2
+		}, 100)
+
+		t2.t.FriendAdd(t1.t.SelfGetAddress(), "autotests")
+		waitcond(func() bool {
+			return t1.t.SelfGetFriendListSize() == 1
+		}, 100)
+
+		fn, _ := t2.t.FriendByPublicKey(t1.t.SelfGetPublicKey())
+		gn, _ := t2.t.AddGroupChat()
+
+		// must wait friend online and can call InviteFriend
+		waitcond(func() bool {
+			st, _ := t2.t.FriendGetConnectionStatus(fn)
+			return st > CONNECTION_NONE
+		}, 100)
+
+		_, err = t2.t.InviteFriend(fn, gn)
+		if err != nil {
+			t.Error(err)
+		}
+		waitcond(func() bool {
+			return t1.t.CountChatList() == 1
+		}, 100)
+		if t1.t.CountChatList() != 1 {
+			t.Error("must 1 chat", t1.t.CountChatList())
+		}
+		if t2.t.CountChatList() != 1 {
+			t.Error("must 1 chat", t2.t.CountChatList())
+		}
+
+		if _, err := t1.t.DelGroupChat(gn); err != nil {
+			t.Error(err)
+		}
+		if _, err := t2.t.DelGroupChat(gn); err != nil {
+			t.Error(err)
+		}
+
+		if groupNameChangeTimes == 0 {
+			t.Error("must > 0")
+		}
 	})
 
 	t.Run("group message", func(t *testing.T) {
+		t1 := NewMiniTox()
+		t2 := NewMiniTox()
+		defer t1.t.Kill()
+		defer t2.t.Kill()
 
+		t1.t.CallbackFriendRequest(func(_ *Tox, friendId, msg string, d interface{}) {
+			t1.t.FriendAddNorequest(friendId)
+		}, nil)
+
+		t1.t.CallbackGroupInvite(func(_ *Tox, friendNumber uint32, itype uint8, data []byte, ud interface{}) {
+			switch itype {
+			case GROUPCHAT_TYPE_TEXT:
+				t1.t.JoinGroupChat(friendNumber, data)
+			case GROUPCHAT_TYPE_AV:
+				t1.t.JoinAVGroupChat(friendNumber, data)
+			}
+		}, nil)
+
+		recved_act := ""
+		t1.t.CallbackGroupAction(func(_ *Tox, groupNumber, peerNumber int, act string, ud interface{}) {
+			recved_act = act
+		}, nil)
+		recved_msg := ""
+		t1.t.CallbackGroupMessage(func(_ *Tox, groupNumber, peerNumber int, msg string, ud interface{}) {
+			recved_msg = msg
+		}, nil)
+
+		go t1.Iterate()
+		go t2.Iterate()
+		defer t1.stop()
+		defer t2.stop()
+
+		waitcond(func() bool {
+			return t1.t.SelfGetConnectionStatus() == 2 && t2.t.SelfGetConnectionStatus() == 2
+		}, 100)
+
+		t2.t.FriendAdd(t1.t.SelfGetAddress(), "autotests")
+		waitcond(func() bool {
+			return t1.t.SelfGetFriendListSize() == 1
+		}, 100)
+
+		fn, _ := t2.t.FriendByPublicKey(t1.t.SelfGetPublicKey())
+		gn, _ := t2.t.AddGroupChat()
+
+		// must wait friend online and can call InviteFriend
+		waitcond(func() bool {
+			st, _ := t2.t.FriendGetConnectionStatus(fn)
+			return st > CONNECTION_NONE
+		}, 100)
+
+		_, err = t2.t.InviteFriend(fn, gn)
+		if err != nil {
+			t.Error(err)
+		}
+		waitcond(func() bool {
+			return t1.t.CountChatList() == 1
+		}, 100)
+
+		// must wait peer join
+		waitcond(func() bool {
+			return t2.t.GroupNumberPeers(gn) == 2
+		}, 10)
+
+		if _, err := t2.t.GroupMessageSend(gn, "foo123"); err != nil {
+			t.Error(err)
+		}
+		if _, err := t2.t.GroupActionSend(gn, "bar123"); err != nil {
+			t.Error(err)
+		}
+		waitcond(func() bool {
+			return len(recved_msg) > 0 && len(recved_act) > 0
+		}, 10)
+		if recved_msg != "foo123" || recved_act != "bar123" {
+			t.Error(recved_msg, recved_act)
+		}
 	})
 }
 

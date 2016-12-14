@@ -320,7 +320,7 @@ func (this *Tox) CallbackFriendConnectionStatus(cbfn cb_friend_connection_status
 
 //export callbackFriendTypingWrapperForC
 func callbackFriendTypingWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
-	var this = (*Tox)(a2)
+	var this = cbUserDatas.get(m)
 	if this.cb_friend_typing != nil {
 		this.cb_friend_typing(this, uint32(a0), uint8(a1), this.cb_friend_typing_user_data)
 	}
