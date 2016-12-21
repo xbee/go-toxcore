@@ -841,12 +841,112 @@ func TestGroup(t *testing.T) {
 	})
 }
 
-// go test -v -run Av
-func TestAv(t *testing.T) {
+// go test -v -run AV
+func TestAV(t *testing.T) {
+	t.Run("create", func(t *testing.T) {
+		if tv1, err := NewToxAV(nil); tv1 != nil {
+			t.Error("must nil", err)
+		}
+		t1 := NewMiniTox()
+		tv1, err := NewToxAV(t1.t)
+		if err != nil {
+			t.Error(err, tv1)
+		}
+	})
 }
 
 // go test -v -run File
 func TestFile(t *testing.T) {
+	t1 := NewMiniTox()
+	t2 := NewMiniTox()
+
+	t1.t.CallbackFriendRequest(func(_ *Tox, friendId, msg string, d interface{}) {
+		t1.t.FriendAddNorequest(friendId)
+	}, nil)
+
+	t1.t.CallbackFileRecv(func(_ *Tox, friendNumber uint32, fileNumber uint32,
+		kind uint32, fileSize uint64, fileName string, d interface{}) {
+		log.Println(fileNumber, fileSize, fileName)
+		_, err := t1.t.FileSeek(friendNumber, fileNumber, 15)
+		if err != nil {
+			t.Error(err)
+		}
+		_, err = t1.t.FileControl(friendNumber, fileNumber, FILE_CONTROL_RESUME)
+		if err != nil {
+			t.Error(err)
+		}
+	}, nil)
+	recvData := ""
+	t1.t.CallbackFileRecvChunk(func(this *Tox, friendNumber uint32, fileNumber uint32,
+		position uint64, data []byte, d interface{}) {
+		// log.Println(fileNumber, position, len(data))
+		recvData += string(data)
+	}, nil)
+	t1.t.CallbackFileRecvControl(func(_ *Tox, friendNumber uint32, fileNumber uint32,
+		control int, ud interface{}) {
+		// log.Println(fileNumber, control)
+	}, nil)
+
+	t2.t.CallbackFileChunkRequest(func(_ *Tox, friend_number uint32, file_number uint32,
+		position uint64, length int, d interface{}) {
+		// log.Println(file_number, position, length)
+		if length == 0 {
+			return
+		}
+		s := strings.Repeat("T", length)
+		_, err := t2.t.FileSendChunk(friend_number, file_number, position, []byte(s))
+		if err != nil {
+			t.Error(err)
+		}
+
+	}, nil)
+	sendRecvDone := false
+	t2.t.CallbackFileRecvControl(func(_ *Tox, friendNumber uint32, fileNumber uint32,
+		control int, ud interface{}) {
+		// log.Println(fileNumber, control)
+		if control == FILE_CONTROL_CANCEL {
+			sendRecvDone = true
+		}
+	}, nil)
+
+	go t1.Iterate()
+	go t2.Iterate()
+	defer t1.stop()
+	defer t2.stop()
+
+	waitcond(func() bool {
+		return t1.t.SelfGetConnectionStatus() == 2 && t2.t.SelfGetConnectionStatus() == 2
+	}, 100)
+
+	t2.t.FriendAdd(t1.t.SelfGetAddress(), "autotests")
+	waitcond(func() bool {
+		return t1.t.SelfGetFriendListSize() == 1
+	}, 100)
+
+	fn, _ := t2.t.FriendByPublicKey(t1.t.SelfGetPublicKey())
+	// must wait friend online and can call InviteFriend
+	waitcond(func() bool {
+		st, _ := t2.t.FriendGetConnectionStatus(fn)
+		return st > CONNECTION_NONE
+	}, 100)
+
+	fh, err := t2.t.FileSend(fn, FILE_KIND_DATA, 12345, "123456", "testfile.txt")
+	if err != nil {
+		t.Error(err, fh)
+	}
+	fid, err := t2.t.FileGetFileId(fn, fh)
+	if len(fid) != FILE_ID_LENGTH*2 {
+		t.Error("file id length not match:", len(fid), FILE_ID_LENGTH*2)
+	}
+
+	waitcond(func() bool {
+		return len(recvData) > 0 && sendRecvDone
+	}, 10)
+	if len(recvData) != 12345-15 {
+		t.Error("recv size not match")
+	}
+
+	// select {}
 }
 
 // go test -v -run Covers

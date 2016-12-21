@@ -27,7 +27,7 @@ typedef void (*cb_friend_status_message_ftype)(Tox *, uint32_t, const uint8_t*, 
 static void cb_friend_status_message_wrapper_for_go(Tox *m, cb_friend_status_message_ftype fn, void *userdata)
 { tox_callback_friend_status_message(m, fn, userdata); }
 
-void callbackFriendStatusWrapperForC(Tox *, uint32_t, uint8_t, void*);
+void callbackFriendStatusWrapperForC(Tox *, uint32_t, int, void*);
 typedef void (*cb_friend_status_ftype)(Tox *, uint32_t, TOX_USER_STATUS, void*);
 static void cb_friend_status_wrapper_for_go(Tox *m, cb_friend_status_ftype fn, void *userdata)
 { tox_callback_friend_status(m, fn, userdata); }
@@ -128,7 +128,7 @@ type cb_friend_request_ftype func(this *Tox, pubkey string, message string, user
 type cb_friend_message_ftype func(this *Tox, friendNumber uint32, message string, userData interface{})
 type cb_friend_name_ftype func(this *Tox, friendNumber uint32, newName string, userData interface{})
 type cb_friend_status_message_ftype func(this *Tox, friendNumber uint32, newStatus string, userData interface{})
-type cb_friend_status_ftype func(this *Tox, friendNumber uint32, status uint8, userData interface{})
+type cb_friend_status_ftype func(this *Tox, friendNumber uint32, status int, userData interface{})
 type cb_friend_connection_status_ftype func(this *Tox, friendNumber uint32, status int, userData interface{})
 type cb_friend_typing_ftype func(this *Tox, friendNumber uint32, isTyping uint8, userData interface{})
 type cb_friend_read_receipt_ftype func(this *Tox, friendNumber uint32, receipt uint32, userData interface{})
@@ -283,10 +283,10 @@ func (this *Tox) CallbackFriendStatusMessage(cbfn cb_friend_status_message_ftype
 }
 
 //export callbackFriendStatusWrapperForC
-func callbackFriendStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
+func callbackFriendStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.int, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_friend_status != nil {
-		this.cb_friend_status(this, uint32(a0), uint8(a1), this.cb_friend_status_user_data)
+		this.cb_friend_status(this, uint32(a0), int(a1), this.cb_friend_status_user_data)
 	}
 }
 
@@ -454,7 +454,7 @@ func (this *Tox) CallbackFileRecv(cbfn cb_file_recv_ftype, userData interface{})
 func callbackFileRecvChunkWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
 	position C.uint64_t, data *C.uint8_t, length C.size_t, userData unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_file_recv != nil {
+	if this.cb_file_recv_chunk != nil {
 		data_ := C.GoBytes((unsafe.Pointer)(data), C.int(length))
 		this.cb_file_recv_chunk(this, uint32(friendNumber), uint32(fileNumber), uint64(position),
 			data_, this.cb_file_recv_chunk_user_data)
@@ -474,7 +474,7 @@ func (this *Tox) CallbackFileRecvChunk(cbfn cb_file_recv_chunk_ftype, userData i
 func callbackFileChunkRequestWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
 	position C.uint64_t, length C.size_t, userData unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_file_recv != nil {
+	if this.cb_file_chunk_request != nil {
 		this.cb_file_chunk_request(this, uint32(friendNumber), uint32(fileNumber), uint64(position),
 			int(length), this.cb_file_chunk_request_user_data)
 	}
@@ -819,20 +819,20 @@ func (this *Tox) SelfGetStatusMessage() (string, error) {
 	return string(C.GoBytes(unsafe.Pointer(_buf), C.int(nlen))), nil
 }
 
-func (this *Tox) FriendGetStatus(friendNumber uint32) (uint8, error) {
+func (this *Tox) FriendGetStatus(friendNumber uint32) (int, error) {
 	var _fn = C.uint32_t(friendNumber)
 
 	var cerr C.TOX_ERR_FRIEND_QUERY
 	r := C.tox_friend_get_status(this.toxcore, _fn, &cerr)
 	if cerr > 0 {
-		return uint8(r), toxerr(cerr)
+		return int(r), toxerr(cerr)
 	}
-	return uint8(r), nil
+	return int(r), nil
 }
 
-func (this *Tox) SelfGetStatus() uint8 {
+func (this *Tox) SelfGetStatus() int {
 	r := C.tox_self_get_status(this.toxcore)
-	return uint8(r)
+	return int(r)
 }
 
 func (this *Tox) FriendGetLastOnline(friendNumber uint32) (uint64, error) {
@@ -976,6 +976,9 @@ func (this *Tox) FileControl(friendNumber uint32, fileNumber uint32, control int
 }
 
 func (this *Tox) FileSend(friendNumber uint32, kind uint32, fileSize uint64, fileId string, fileName string) (uint32, error) {
+	if len(fileId) != FILE_ID_LENGTH*2 {
+	}
+
 	fileName_ := C.CString(fileName)
 	defer C.free(unsafe.Pointer(fileName_))
 
@@ -989,6 +992,9 @@ func (this *Tox) FileSend(friendNumber uint32, kind uint32, fileSize uint64, fil
 }
 
 func (this *Tox) FileSendChunk(friendNumber uint32, fileNumber uint32, position uint64, data []byte) (bool, error) {
+	if data == nil || len(data) == 0 {
+		return false, toxerr("empty data")
+	}
 	var cerr C.TOX_ERR_FILE_SEND_CHUNK
 	r := C.tox_file_send_chunk(this.toxcore, C.uint32_t(friendNumber), C.uint32_t(fileNumber),
 		C.uint64_t(position), pointer2uint8((unsafe.Pointer)(&data[0])), C.size_t(len(data)), &cerr)

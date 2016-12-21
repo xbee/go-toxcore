@@ -135,7 +135,7 @@ func main() {
 			log.Println("on friend connection status:", friendNumber, status, friendId, err)
 		}
 	}, nil)
-	t.CallbackFriendStatus(func(t *tox.Tox, friendNumber uint32, status uint8, userData interface{}) {
+	t.CallbackFriendStatus(func(t *tox.Tox, friendNumber uint32, status int, userData interface{}) {
 		if debug {
 			friendId, err := t.FriendGetPublicKey(friendNumber)
 			log.Println("on friend status:", friendNumber, status, friendId, err)
@@ -259,7 +259,10 @@ func main() {
 	}, nil)
 
 	// audio/video
-	av := tox.NewToxAV(t)
+	av, err := tox.NewToxAV(t)
+	if err != nil {
+		log.Println(err, av)
+	}
 	if av == nil {
 	}
 	av.CallbackCall(func(av *tox.ToxAV, friendNumber uint32, audioEnabled bool,

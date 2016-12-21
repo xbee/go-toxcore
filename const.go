@@ -44,11 +44,11 @@ const (
 	FILE_CONTROL_CANCEL = int(C.TOX_FILE_CONTROL_CANCEL)
 )
 
-type FileKind int
+type FileKind uint32
 
 const (
-	FILE_KIND_DATA   = int(C.TOX_FILE_KIND_DATA)
-	FILE_KIND_AVATAR = int(C.TOX_FILE_KIND_AVATAR)
+	FILE_KIND_DATA   = uint32(C.TOX_FILE_KIND_DATA)
+	FILE_KIND_AVATAR = uint32(C.TOX_FILE_KIND_AVATAR)
 )
 
 type GroupchatType uint8
