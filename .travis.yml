@@ -54,10 +54,13 @@ install:
 script:
   - pwd
   - go get github.com/streamrail/concurrent-map
-  - go install -v -x github.com/kitech/go-toxcore
-  - ln -sv $PWD ../../../tox
-  - ls ../../../tox
-  - go build -v -x examples/toxecho.go
+  - go get -v -x github.com/kitech/go-toxcore
+  - go get -v -x github.com/kitech/go-toxcore/examples
+  - cd $GOPATH && go test -v
+  # - go install -v -x github.com/kitech/go-toxcore
+  # - ln -sv $PWD ../../../tox
+  # - ls ../../../tox
+  # - go build -v -x examples/toxecho.go
 
 notifications:
   email: false
