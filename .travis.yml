@@ -58,7 +58,7 @@ script:
   # - go get -v -x github.com/kitech/go-toxcore/examples
   - go install -v -x
   - go build -v -x -o echobot ./examples/toxecho.go
-  - go test -v -covermode count -timeout 60
+  - go test -v -covermode count -timeout 60m
 
 
 notifications:
