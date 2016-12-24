@@ -476,7 +476,7 @@ func TestFriend(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		if t1st != uint8(USER_STATUS_NONE) {
+		if t1st != USER_STATUS_NONE {
 			t.Error(t1st)
 		}
 	})

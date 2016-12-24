@@ -57,7 +57,7 @@ script:
   # - go get -v -x github.com/kitech/go-toxcore
   # - go get -v -x github.com/kitech/go-toxcore/examples
   - go install -v -x
-  - go install -v -x examples
+  - go install -v -x -o echobot ./examples
   - go test -v
   # - go install -v -x github.com/kitech/go-toxcore
   # - ln -sv $PWD ../../../tox
