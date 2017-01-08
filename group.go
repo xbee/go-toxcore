@@ -8,27 +8,27 @@ package tox
 void callbackGroupInviteWrapperForC(Tox*, int32_t, uint8_t, uint8_t *, uint16_t, void *);
 typedef void (*cb_group_invite_ftype)(Tox *, int32_t, uint8_t, const uint8_t *, uint16_t, void *);
 static void cb_group_invite_wrapper_for_go(Tox *m, cb_group_invite_ftype fn, void *userdata)
-{ tox_callback_group_invite(m, fn, userdata); }
+{ tox_callback_conference_invite(m, fn); }
 
 void callbackGroupMessageWrapperForC(Tox *, int, int, int8_t *, uint16_t, void *);
 typedef void (*cb_group_message_ftype)(Tox *, int, int, const uint8_t *, uint16_t, void *);
 static void cb_group_message_wrapper_for_go(Tox *m, cb_group_message_ftype fn, void *userdata)
-{ tox_callback_group_message(m, fn, userdata); }
+{ tox_callback_conference_message(m, fn); }
 
 void callbackGroupActionWrapperForC(Tox*, int, int, uint8_t*, uint16_t, void*);
 typedef void (*cb_group_action_ftype)(Tox*, int, int, const uint8_t*, uint16_t, void*);
 static void cb_group_action_wrapper_for_go(Tox *m, cb_group_action_ftype fn, void *userdata)
-{ tox_callback_group_action(m, fn, userdata); }
+{ tox_callback_conference_message(m, fn); }
 
 void callbackGroupTitleWrapperForC(Tox*, int, int, uint8_t*, uint8_t, void*);
 typedef void (*cb_group_title_ftype)(Tox*, int, int, const uint8_t*, uint8_t, void*);
 static void cb_group_title_wrapper_for_go(Tox *m, cb_group_title_ftype fn, void *userdata)
-{ tox_callback_group_title(m, fn, userdata); }
+{ tox_callback_conference_title(m, fn); }
 
 void callbackGroupNameListChangeWrapperForC(Tox*, int, int, uint8_t, void*);
 typedef void (*cb_group_namelist_change_ftype)(Tox*, int, int, uint8_t, void*);
 static void cb_group_namelist_change_wrapper_for_go(Tox *m, cb_group_namelist_change_ftype fn, void *userdata)
-{ tox_callback_group_namelist_change(m, fn, userdata); }
+{ tox_callback_conference_namelist_change(m, fn); }
 
 // fix nouse compile warning
 static inline void fixnousetoxgroup() {
@@ -153,7 +153,7 @@ func (this *Tox) CallbackGroupNameListChange(cbfn cb_group_namelist_change_ftype
 }
 
 func (this *Tox) AddGroupChat() (int, error) {
-	r := C.tox_add_groupchat(this.toxcore)
+	r := C.tox_conference_new(this.toxcore, nil)
 	if int(r) == -1 {
 		return int(r), errors.New("add group chat failed")
 	}
@@ -161,23 +161,23 @@ func (this *Tox) AddGroupChat() (int, error) {
 }
 
 func (this *Tox) DelGroupChat(groupNumber int) (int, error) {
-	var _gn = C.int(groupNumber)
+	var _gn = C.uint32_t(groupNumber)
 
-	r := C.tox_del_groupchat(this.toxcore, _gn)
-	if int(r) == -1 {
-		return int(r), errors.New("delete group chat failed")
+	r := C.tox_conference_delete(this.toxcore, _gn, nil)
+	if bool(r) == false {
+		return 1, errors.New("delete group chat failed")
 	}
-	return int(r), nil
+	return 0, nil
 }
 
 func (this *Tox) GroupPeerName(groupNumber int, peerNumber int) (string, error) {
-	var _gn = C.int(groupNumber)
-	var _pn = C.int(peerNumber)
+	var _gn = C.uint32_t(groupNumber)
+	var _pn = C.uint32_t(peerNumber)
 	var _name = (*C.char)(C.calloc(1, C.size_t(MAX_NAME_LENGTH)))
 	defer C.free(unsafe.Pointer(_name))
 
-	r := C.tox_group_peername(this.toxcore, _gn, _pn, char2uint8(_name))
-	if r == -1 {
+	r := C.tox_conference_peer_get_name(this.toxcore, _gn, _pn, char2uint8(_name), nil)
+	if r == false {
 		return "", errors.New("get peer name failed")
 	}
 	name := C.GoString(_name)
@@ -185,13 +185,13 @@ func (this *Tox) GroupPeerName(groupNumber int, peerNumber int) (string, error) 
 }
 
 func (this *Tox) GroupPeerPubkey(groupNumber int, peerNumber int) (string, error) {
-	var _gn = C.int(groupNumber)
-	var _pn = C.int(peerNumber)
+	var _gn = C.uint32_t(groupNumber)
+	var _pn = C.uint32_t(peerNumber)
 	var _pubkey *C.char = (*C.char)(C.calloc(1, C.size_t(PUBLIC_KEY_SIZE)))
 	defer C.free(unsafe.Pointer(_pubkey))
 
-	r := C.tox_group_peer_pubkey(this.toxcore, _gn, _pn, char2uint8(_pubkey))
-	if r == C.int(-1) {
+	r := C.tox_conference_peer_get_public_key(this.toxcore, _gn, _pn, char2uint8(_pubkey), nil)
+	if r == false {
 		return "", errors.New("get pubkey failed")
 	}
 
@@ -201,8 +201,8 @@ func (this *Tox) GroupPeerPubkey(groupNumber int, peerNumber int) (string, error
 }
 
 func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error) {
-	var _fn = C.int32_t(friendNumber)
-	var _gn = C.int(groupNumber)
+	var _fn = C.uint32_t(friendNumber)
+	var _gn = C.uint32_t(groupNumber)
 
 	// if give a friendNumber which not exists,
 	// the tox_invite_friend has a strange behaive: cause other tox_* call failed
@@ -212,76 +212,83 @@ func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error)
 		return -1, errors.New("friend not exists")
 	}
 
-	r := C.tox_invite_friend(this.toxcore, _fn, _gn)
-	return int(r), nil
+	r := C.tox_conference_invite(this.toxcore, _fn, _gn, nil)
+	if r == false {
+		return 0, toxerr("conference invite failed")
+	}
+	return 1, nil
 }
 
 func (this *Tox) JoinGroupChat(friendNumber uint32, data []byte) (int, error) {
 	if data == nil || len(data) < 10 {
 		return -1, errors.New("invalid data")
 	}
-	var _fn = C.int32_t(friendNumber)
+	var _fn = C.uint32_t(friendNumber)
 	var _data = (*C.char)((unsafe.Pointer)(&data[0]))
 	var length = len(data)
-	var _length = C.uint16_t(length)
+	var _length = C.size_t(length)
 
-	r := C.tox_join_groupchat(this.toxcore, _fn, char2uint8(_data), _length)
-	if int(r) == -1 {
+	r := C.tox_conference_join(this.toxcore, _fn, char2uint8(_data), _length, nil)
+	if r == C.UINT32_MAX {
 		return int(r), errors.New("join group chat failed")
 	}
 	return int(r), nil
 }
 
 func (this *Tox) GroupActionSend(groupNumber int, action string) (int, error) {
-	var _gn = C.int(groupNumber)
+	var _gn = C.uint32_t(groupNumber)
 	var _action = C.CString(action)
 	defer C.free(unsafe.Pointer(_action))
-	var _length = C.uint16_t(len(action))
+	var _length = C.size_t(len(action))
 
-	r := C.tox_group_action_send(this.toxcore, _gn, char2uint8(_action), _length)
-	if int(r) == -1 {
-		return int(r), errors.New("group action failed")
+	var cerr C.TOX_ERR_CONFERENCE_SEND_MESSAGE
+	var mtype C.TOX_MESSAGE_TYPE = C.TOX_MESSAGE_TYPE_ACTION
+	r := C.tox_conference_send_message(this.toxcore, _gn, mtype, char2uint8(_action), _length, &cerr)
+	if r == false {
+		return 0, errors.New("group action failed")
 	}
-	return int(r), nil
+	return 1, nil
 }
 
 func (this *Tox) GroupMessageSend(groupNumber int, message string) (int, error) {
-	var _gn = C.int(groupNumber)
+	var _gn = C.uint32_t(groupNumber)
 	var _message = C.CString(message)
 	defer C.free(unsafe.Pointer(_message))
-	var _length = C.uint16_t(len(message))
+	var _length = C.size_t(len(message))
 
-	r := C.tox_group_message_send(this.toxcore, _gn, char2uint8(_message), _length)
-	if int(r) == -1 {
-		return int(r), errors.New("group send message failed")
+	var cerr C.TOX_ERR_CONFERENCE_SEND_MESSAGE
+	var mtype C.TOX_MESSAGE_TYPE = C.TOX_MESSAGE_TYPE_ACTION
+	r := C.tox_conference_send_message(this.toxcore, _gn, mtype, char2uint8(_message), _length, &cerr)
+	if r == false {
+		return 0, errors.New("group send message failed")
 	}
-	return int(r), nil
+	return 1, nil
 }
 
 func (this *Tox) GroupSetTitle(groupNumber int, title string) (int, error) {
-	var _gn = C.int(groupNumber)
+	var _gn = C.uint32_t(groupNumber)
 	var _title = C.CString(title)
 	defer C.free(unsafe.Pointer(_title))
-	var _length = C.uint8_t(len(title))
+	var _length = C.size_t(len(title))
 
-	r := C.tox_group_set_title(this.toxcore, _gn, char2uint8(_title), _length)
-	if int(r) == -1 {
+	r := C.tox_conference_set_title(this.toxcore, _gn, char2uint8(_title), _length, nil)
+	if r == false {
 		if len(title) > MAX_NAME_LENGTH {
-			return int(r), errors.New("title too long")
+			return 0, errors.New("title too long")
 		}
-		return int(r), errors.New("set title failed")
+		return 0, errors.New("set title failed")
 	}
-	return int(r), nil
+	return 1, nil
 }
 
 func (this *Tox) GroupGetTitle(groupNumber int) (string, error) {
-	var _gn = C.int(groupNumber)
+	var _gn = C.uint32_t(groupNumber)
 	var _title = (*C.char)(C.calloc(1, C.size_t(MAX_NAME_LENGTH)))
 	defer C.free(unsafe.Pointer(_title))
-	var _maxlen = C.uint32_t(MAX_NAME_LENGTH)
+	// var _maxlen = C.uint32_t(MAX_NAME_LENGTH)
 
-	r := C.tox_group_get_title(this.toxcore, _gn, char2uint8(_title), _maxlen)
-	if r == -1 {
+	r := C.tox_conference_get_title(this.toxcore, _gn, char2uint8(_title), nil)
+	if r == false {
 		return "", errors.New("get title failed")
 	}
 	title := C.GoString(_title)
@@ -289,17 +296,17 @@ func (this *Tox) GroupGetTitle(groupNumber int) (string, error) {
 }
 
 func (this *Tox) GroupPeerNumberIsOurs(groupNumber int, peerNumber int) bool {
-	var _gn = C.int(groupNumber)
-	var _pn = C.int(peerNumber)
+	var _gn = C.uint32_t(groupNumber)
+	var _pn = C.uint32_t(peerNumber)
 
-	r := C.tox_group_peernumber_is_ours(this.toxcore, _gn, _pn)
-	return uint(r) == 1
+	r := C.tox_conference_peer_number_is_ours(this.toxcore, _gn, _pn, nil)
+	return bool(r)
 }
 
 func (this *Tox) GroupNumberPeers(groupNumber int) int {
-	var _gn = C.int(groupNumber)
+	var _gn = C.uint32_t(groupNumber)
 
-	r := C.tox_group_number_peers(this.toxcore, _gn)
+	r := C.tox_conference_peer_count(this.toxcore, _gn, nil)
 	return int(r)
 }
 
@@ -310,23 +317,32 @@ func (this *Tox) GroupGetNames(groupNumber int) []string {
 		return vec
 	}
 
-	lengths := make([]uint16, peerCount)
-	names := make([]byte, peerCount*MAX_NAME_LENGTH)
-	clengths := (*C.uint16_t)(&lengths[0])
-	cnames := (*[MAX_NAME_LENGTH]C.uint8_t)((unsafe.Pointer)(&names[0]))
-
-	r := C.tox_group_get_names(this.toxcore, C.int(groupNumber),
-		cnames, clengths, C.uint16_t(peerCount))
-	if int(r) == -1 {
-		return vec[0:0]
-	}
+	// lengths := make([]uint16, peerCount)
+	// names := make([]byte, peerCount*MAX_NAME_LENGTH)
+	// clengths := (*C.uint16_t)(&lengths[0])
+	// cnames := (*[MAX_NAME_LENGTH]C.uint8_t)((unsafe.Pointer)(&names[0]))
 
 	for idx := 0; idx < peerCount; idx++ {
-		len := int(lengths[idx])
-		name := names[idx*MAX_NAME_LENGTH : (idx*MAX_NAME_LENGTH + len)]
-		vec[idx] = string(name)
+		pname, err := this.GroupPeerName(groupNumber, idx)
+		if err != nil {
+			return vec[0:0]
+		}
+		vec[idx] = pname
 	}
 
+	/*
+		r := C.tox_group_get_names(this.toxcore, C.int(groupNumber),
+			cnames, clengths, C.uint16_t(peerCount))
+		if int(r) == -1 {
+			return vec[0:0]
+		}
+
+		for idx := 0; idx < peerCount; idx++ {
+			len := int(lengths[idx])
+			name := names[idx*MAX_NAME_LENGTH : (idx*MAX_NAME_LENGTH + len)]
+			vec[idx] = string(name)
+		}
+	*/
 	return vec
 }
 
@@ -365,7 +381,7 @@ func (this *Tox) GroupGetPeers(groupNumber int) map[int]string {
 }
 
 func (this *Tox) CountChatList() uint32 {
-	r := C.tox_count_chatlist(this.toxcore)
+	r := C.tox_conference_get_chatlist_size(this.toxcore)
 	return uint32(r)
 }
 
@@ -377,17 +393,14 @@ func (this *Tox) GetChatList() []int32 {
 	}
 
 	vec_p := unsafe.Pointer(&vec[0])
-	osz := C.tox_get_chatlist(this.toxcore, (*C.int32_t)(vec_p), C.uint32_t(sz))
-	if osz == 0 {
-		return vec[0:0]
-	}
+	C.tox_conference_get_chatlist(this.toxcore, (*C.uint32_t)(vec_p))
 	return vec
 }
 
 func (this *Tox) GroupGetType(groupNumber int) (uint8, error) {
-	var _gn = C.int(groupNumber)
+	var _gn = C.uint32_t(groupNumber)
 
-	r := C.tox_group_get_type(this.toxcore, _gn)
+	r := C.tox_conference_get_type(this.toxcore, _gn, nil)
 	if int(r) == -1 {
 		return uint8(r), errors.New("get type failed")
 	}
