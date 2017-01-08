@@ -596,7 +596,7 @@ func TestGroup(t *testing.T) {
 		var gcnt = 5
 		for idx := 0; idx < gcnt; idx++ {
 			gn, err = t1.t.AddGroupChat()
-			if gn != idx {
+			if gn != uint32(idx) {
 				t.Error(gn, idx)
 			}
 			title := fmt.Sprintf("group%d", idx)
@@ -693,7 +693,7 @@ func TestGroup(t *testing.T) {
 			t1.t.FriendAddNorequest(friendId)
 		}, nil)
 
-		t1.t.CallbackGroupInvite(func(_ *Tox, friendNumber uint32, itype uint8, data []byte, ud interface{}) {
+		t1.t.CallbackGroupInvite(func(_ *Tox, friendNumber uint32, itype int, data []byte, ud interface{}) {
 			switch itype {
 			case GROUPCHAT_TYPE_TEXT:
 				_, err := t1.t.JoinGroupChat(friendNumber, data)
@@ -709,7 +709,7 @@ func TestGroup(t *testing.T) {
 		}, nil)
 
 		groupNameChangeTimes := 0
-		t2.t.CallbackGroupNameListChange(func(_ *Tox, groupNumber int, peerNumber int, change uint8, ud interface{}) {
+		t2.t.CallbackGroupNameListChange(func(_ *Tox, groupNumber uint32, peerNumber uint32, change int, ud interface{}) {
 			groupNameChangeTimes += 1
 		}, nil)
 
@@ -772,7 +772,7 @@ func TestGroup(t *testing.T) {
 			t1.t.FriendAddNorequest(friendId)
 		}, nil)
 
-		t1.t.CallbackGroupInvite(func(_ *Tox, friendNumber uint32, itype uint8, data []byte, ud interface{}) {
+		t1.t.CallbackGroupInvite(func(_ *Tox, friendNumber uint32, itype int, data []byte, ud interface{}) {
 			switch itype {
 			case GROUPCHAT_TYPE_TEXT:
 				t1.t.JoinGroupChat(friendNumber, data)
@@ -782,12 +782,15 @@ func TestGroup(t *testing.T) {
 		}, nil)
 
 		recved_act := ""
-		t1.t.CallbackGroupAction(func(_ *Tox, groupNumber, peerNumber int, act string, ud interface{}) {
-			recved_act = act
-		}, nil)
 		recved_msg := ""
-		t1.t.CallbackGroupMessage(func(_ *Tox, groupNumber, peerNumber int, msg string, ud interface{}) {
-			recved_msg = msg
+		t1.t.CallbackGroupMessage(func(_ *Tox, groupNumber, peerNumber uint32, mtype int, msg string, ud interface{}) {
+			switch mtype {
+			case MESSAGE_TYPE_NORMAL:
+				recved_msg = msg
+			case MESSAGE_TYPE_ACTION:
+				recved_act = msg
+			}
+
 		}, nil)
 
 		go t1.Iterate()

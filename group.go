@@ -5,28 +5,28 @@ package tox
 #include <string.h>
 #include <tox/tox.h>
 
-void callbackGroupInviteWrapperForC(Tox*, int32_t, uint8_t, uint8_t *, uint16_t, void *);
-typedef void (*cb_group_invite_ftype)(Tox *, int32_t, uint8_t, const uint8_t *, uint16_t, void *);
+void callbackGroupInviteWrapperForC(Tox*, uint32_t, TOX_CONFERENCE_TYPE, uint8_t *, size_t, void *);
+typedef void (*cb_group_invite_ftype)(Tox *, uint32_t, TOX_CONFERENCE_TYPE, const uint8_t *, size_t, void *);
 static void cb_group_invite_wrapper_for_go(Tox *m, cb_group_invite_ftype fn, void *userdata)
 { tox_callback_conference_invite(m, fn); }
 
-void callbackGroupMessageWrapperForC(Tox *, int, int, int8_t *, uint16_t, void *);
-typedef void (*cb_group_message_ftype)(Tox *, int, int, const uint8_t *, uint16_t, void *);
+void callbackGroupMessageWrapperForC(Tox *, uint32_t, uint32_t, TOX_MESSAGE_TYPE, int8_t *, size_t, void *);
+typedef void (*cb_group_message_ftype)(Tox *, uint32_t, uint32_t, TOX_MESSAGE_TYPE, const uint8_t *, size_t, void *);
 static void cb_group_message_wrapper_for_go(Tox *m, cb_group_message_ftype fn, void *userdata)
 { tox_callback_conference_message(m, fn); }
 
-void callbackGroupActionWrapperForC(Tox*, int, int, uint8_t*, uint16_t, void*);
-typedef void (*cb_group_action_ftype)(Tox*, int, int, const uint8_t*, uint16_t, void*);
-static void cb_group_action_wrapper_for_go(Tox *m, cb_group_action_ftype fn, void *userdata)
-{ tox_callback_conference_message(m, fn); }
+// void callbackGroupActionWrapperForC(Tox*, uint32_t, uint32_t, uint8_t*, size_t, void*);
+// typedef void (*cb_group_action_ftype)(Tox*, uint32_t, uint32_t, const uint8_t*, size_t, void*);
+// static void cb_group_action_wrapper_for_go(Tox *m, cb_group_action_ftype fn, void *userdata)
+// { tox_callback_conference_message(m, fn); }
 
-void callbackGroupTitleWrapperForC(Tox*, int, int, uint8_t*, uint8_t, void*);
-typedef void (*cb_group_title_ftype)(Tox*, int, int, const uint8_t*, uint8_t, void*);
+void callbackGroupTitleWrapperForC(Tox*, uint32_t, uint32_t, uint8_t*, size_t, void*);
+typedef void (*cb_group_title_ftype)(Tox*, uint32_t, uint32_t, const uint8_t*, size_t, void*);
 static void cb_group_title_wrapper_for_go(Tox *m, cb_group_title_ftype fn, void *userdata)
 { tox_callback_conference_title(m, fn); }
 
-void callbackGroupNameListChangeWrapperForC(Tox*, int, int, uint8_t, void*);
-typedef void (*cb_group_namelist_change_ftype)(Tox*, int, int, uint8_t, void*);
+void callbackGroupNameListChangeWrapperForC(Tox*, uint32_t, uint32_t, TOX_CONFERENCE_STATE_CHANGE, void*);
+typedef void (*cb_group_namelist_change_ftype)(Tox*, uint32_t, uint32_t, TOX_CONFERENCE_STATE_CHANGE, void*);
 static void cb_group_namelist_change_wrapper_for_go(Tox *m, cb_group_namelist_change_ftype fn, void *userdata)
 { tox_callback_conference_namelist_change(m, fn); }
 
@@ -34,7 +34,7 @@ static void cb_group_namelist_change_wrapper_for_go(Tox *m, cb_group_namelist_ch
 static inline void fixnousetoxgroup() {
     cb_group_invite_wrapper_for_go(NULL, NULL, NULL);
     cb_group_message_wrapper_for_go(NULL, NULL, NULL);
-    cb_group_action_wrapper_for_go(NULL, NULL, NULL);
+    // cb_group_action_wrapper_for_go(NULL, NULL, NULL);
     cb_group_title_wrapper_for_go(NULL, NULL, NULL);
     cb_group_namelist_change_wrapper_for_go(NULL, NULL, NULL);
 }
@@ -50,20 +50,21 @@ import (
 )
 
 // group callback type
-type cb_group_invite_ftype func(this *Tox, friendNumber uint32, itype uint8, data []byte, userData interface{})
-type cb_group_message_ftype func(this *Tox, groupNumber int, peerNumber int, message string, userData interface{})
-type cb_group_action_ftype func(this *Tox, groupNumber int, peerNumber int, action string, userData interface{})
-type cb_group_title_ftype func(this *Tox, groupNumber int, peerNumber int, title string, userData interface{})
-type cb_group_namelist_change_ftype func(this *Tox, groupNumber int, peerNumber int, change uint8, userData interface{})
+type cb_group_invite_ftype func(this *Tox, friendNumber uint32, itype int, data []byte, userData interface{})
+type cb_group_message_ftype func(this *Tox, groupNumber uint32, peerNumber uint32, mtype int, message string, userData interface{})
+
+// type cb_group_action_ftype func(this *Tox, groupNumber int, peerNumber int, action string, userData interface{})
+type cb_group_title_ftype func(this *Tox, groupNumber uint32, peerNumber uint32, title string, userData interface{})
+type cb_group_namelist_change_ftype func(this *Tox, groupNumber uint32, peerNumber uint32, change int, userData interface{})
 
 // tox_callback_group_***
 
 //export callbackGroupInviteWrapperForC
-func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.int32_t, a1 C.uint8_t, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
+func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.TOX_CONFERENCE_TYPE, a2 *C.uint8_t, a3 C.size_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_group_invite != nil {
 		data := C.GoBytes((unsafe.Pointer)(a2), C.int(a3))
-		this.cb_group_invite(this, uint32(a0), uint8(a1), data, this.cb_group_invite_user_data)
+		this.cb_group_invite(this, uint32(a0), int(a1), data, this.cb_group_invite_user_data)
 	}
 }
 
@@ -78,11 +79,11 @@ func (this *Tox) CallbackGroupInvite(cbfn cb_group_invite_ftype, userData interf
 }
 
 //export callbackGroupMessageWrapperForC
-func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.int8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
+func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, mtype C.TOX_MESSAGE_TYPE, a2 *C.int8_t, a3 C.size_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_group_message != nil {
 		message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
-		this.cb_group_message(this, int(a0), int(a1), message, this.cb_group_message_user_data)
+		this.cb_group_message(this, uint32(a0), uint32(a1), int(mtype), message, this.cb_group_message_user_data)
 	}
 }
 
@@ -96,6 +97,7 @@ func (this *Tox) CallbackGroupMessage(cbfn cb_group_message_ftype, userData inte
 	C.cb_group_message_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
+/*
 //export callbackGroupActionWrapperForC
 func callbackGroupActionWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
@@ -114,13 +116,14 @@ func (this *Tox) CallbackGroupAction(cbfn cb_group_action_ftype, userData interf
 
 	C.cb_group_action_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
+*/
 
 //export callbackGroupTitleWrapperForC
-func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint8_t, a4 unsafe.Pointer) {
+func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 *C.uint8_t, a3 C.size_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_group_title != nil {
 		title := C.GoStringN((*C.char)((unsafe.Pointer)(a2)), C.int(a3))
-		this.cb_group_title(this, int(a0), int(a1), title, this.cb_group_title_user_data)
+		this.cb_group_title(this, uint32(a0), uint32(a1), title, this.cb_group_title_user_data)
 	}
 }
 
@@ -135,10 +138,10 @@ func (this *Tox) CallbackGroupTitle(cbfn cb_group_title_ftype, userData interfac
 }
 
 //export callbackGroupNameListChangeWrapperForC
-func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 C.uint8_t, a3 unsafe.Pointer) {
+func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 C.TOX_CONFERENCE_STATE_CHANGE, a3 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if this.cb_group_namelist_change != nil {
-		this.cb_group_namelist_change(this, int(a0), int(a1), uint8(a2), this.cb_group_namelist_change_user_data)
+		this.cb_group_namelist_change(this, uint32(a0), uint32(a1), int(a2), this.cb_group_namelist_change_user_data)
 	}
 }
 
@@ -152,15 +155,15 @@ func (this *Tox) CallbackGroupNameListChange(cbfn cb_group_namelist_change_ftype
 	C.cb_group_namelist_change_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-func (this *Tox) AddGroupChat() (int, error) {
+func (this *Tox) AddGroupChat() (uint32, error) {
 	r := C.tox_conference_new(this.toxcore, nil)
 	if int(r) == -1 {
-		return int(r), errors.New("add group chat failed")
+		return uint32(r), errors.New("add group chat failed")
 	}
-	return int(r), nil
+	return uint32(r), nil
 }
 
-func (this *Tox) DelGroupChat(groupNumber int) (int, error) {
+func (this *Tox) DelGroupChat(groupNumber uint32) (int, error) {
 	var _gn = C.uint32_t(groupNumber)
 
 	r := C.tox_conference_delete(this.toxcore, _gn, nil)
@@ -170,7 +173,7 @@ func (this *Tox) DelGroupChat(groupNumber int) (int, error) {
 	return 0, nil
 }
 
-func (this *Tox) GroupPeerName(groupNumber int, peerNumber int) (string, error) {
+func (this *Tox) GroupPeerName(groupNumber uint32, peerNumber uint32) (string, error) {
 	var _gn = C.uint32_t(groupNumber)
 	var _pn = C.uint32_t(peerNumber)
 	var _name = (*C.char)(C.calloc(1, C.size_t(MAX_NAME_LENGTH)))
@@ -184,7 +187,7 @@ func (this *Tox) GroupPeerName(groupNumber int, peerNumber int) (string, error) 
 	return name, nil
 }
 
-func (this *Tox) GroupPeerPubkey(groupNumber int, peerNumber int) (string, error) {
+func (this *Tox) GroupPeerPubkey(groupNumber uint32, peerNumber uint32) (string, error) {
 	var _gn = C.uint32_t(groupNumber)
 	var _pn = C.uint32_t(peerNumber)
 	var _pubkey *C.char = (*C.char)(C.calloc(1, C.size_t(PUBLIC_KEY_SIZE)))
@@ -200,7 +203,7 @@ func (this *Tox) GroupPeerPubkey(groupNumber int, peerNumber int) (string, error
 	return pubkey, nil
 }
 
-func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error) {
+func (this *Tox) InviteFriend(friendNumber uint32, groupNumber uint32) (int, error) {
 	var _fn = C.uint32_t(friendNumber)
 	var _gn = C.uint32_t(groupNumber)
 
@@ -235,7 +238,7 @@ func (this *Tox) JoinGroupChat(friendNumber uint32, data []byte) (int, error) {
 	return int(r), nil
 }
 
-func (this *Tox) GroupActionSend(groupNumber int, action string) (int, error) {
+func (this *Tox) GroupActionSend(groupNumber uint32, action string) (int, error) {
 	var _gn = C.uint32_t(groupNumber)
 	var _action = C.CString(action)
 	defer C.free(unsafe.Pointer(_action))
@@ -250,7 +253,7 @@ func (this *Tox) GroupActionSend(groupNumber int, action string) (int, error) {
 	return 1, nil
 }
 
-func (this *Tox) GroupMessageSend(groupNumber int, message string) (int, error) {
+func (this *Tox) GroupMessageSend(groupNumber uint32, message string) (int, error) {
 	var _gn = C.uint32_t(groupNumber)
 	var _message = C.CString(message)
 	defer C.free(unsafe.Pointer(_message))
@@ -265,7 +268,7 @@ func (this *Tox) GroupMessageSend(groupNumber int, message string) (int, error) 
 	return 1, nil
 }
 
-func (this *Tox) GroupSetTitle(groupNumber int, title string) (int, error) {
+func (this *Tox) GroupSetTitle(groupNumber uint32, title string) (int, error) {
 	var _gn = C.uint32_t(groupNumber)
 	var _title = C.CString(title)
 	defer C.free(unsafe.Pointer(_title))
@@ -281,7 +284,7 @@ func (this *Tox) GroupSetTitle(groupNumber int, title string) (int, error) {
 	return 1, nil
 }
 
-func (this *Tox) GroupGetTitle(groupNumber int) (string, error) {
+func (this *Tox) GroupGetTitle(groupNumber uint32) (string, error) {
 	var _gn = C.uint32_t(groupNumber)
 	var _title = (*C.char)(C.calloc(1, C.size_t(MAX_NAME_LENGTH)))
 	defer C.free(unsafe.Pointer(_title))
@@ -295,7 +298,7 @@ func (this *Tox) GroupGetTitle(groupNumber int) (string, error) {
 	return title, nil
 }
 
-func (this *Tox) GroupPeerNumberIsOurs(groupNumber int, peerNumber int) bool {
+func (this *Tox) GroupPeerNumberIsOurs(groupNumber uint32, peerNumber uint32) bool {
 	var _gn = C.uint32_t(groupNumber)
 	var _pn = C.uint32_t(peerNumber)
 
@@ -303,14 +306,14 @@ func (this *Tox) GroupPeerNumberIsOurs(groupNumber int, peerNumber int) bool {
 	return bool(r)
 }
 
-func (this *Tox) GroupNumberPeers(groupNumber int) int {
+func (this *Tox) GroupNumberPeers(groupNumber uint32) int {
 	var _gn = C.uint32_t(groupNumber)
 
 	r := C.tox_conference_peer_count(this.toxcore, _gn, nil)
 	return int(r)
 }
 
-func (this *Tox) GroupGetNames(groupNumber int) []string {
+func (this *Tox) GroupGetNames(groupNumber uint32) []string {
 	peerCount := this.GroupNumberPeers(groupNumber)
 	vec := make([]string, peerCount)
 	if peerCount == 0 {
@@ -323,7 +326,7 @@ func (this *Tox) GroupGetNames(groupNumber int) []string {
 	// cnames := (*[MAX_NAME_LENGTH]C.uint8_t)((unsafe.Pointer)(&names[0]))
 
 	for idx := 0; idx < peerCount; idx++ {
-		pname, err := this.GroupPeerName(groupNumber, idx)
+		pname, err := this.GroupPeerName(groupNumber, uint32(idx))
 		if err != nil {
 			return vec[0:0]
 		}
@@ -346,12 +349,12 @@ func (this *Tox) GroupGetNames(groupNumber int) []string {
 	return vec
 }
 
-func (this *Tox) GroupGetPeerPubkeys(groupNumber int) []string {
+func (this *Tox) GroupGetPeerPubkeys(groupNumber uint32) []string {
 	vec := make([]string, 0)
 	peerCount := this.GroupNumberPeers(groupNumber)
 	maxcnt := 65536
 	for peerNumber := 0; peerNumber < maxcnt; peerNumber++ {
-		pubkey, err := this.GroupPeerPubkey(groupNumber, peerNumber)
+		pubkey, err := this.GroupPeerPubkey(groupNumber, uint32(peerNumber))
 		if err != nil {
 		} else {
 			vec = append(vec, pubkey)
@@ -363,12 +366,12 @@ func (this *Tox) GroupGetPeerPubkeys(groupNumber int) []string {
 	return vec
 }
 
-func (this *Tox) GroupGetPeers(groupNumber int) map[int]string {
+func (this *Tox) GroupGetPeers(groupNumber uint32) map[int]string {
 	vec := make(map[int]string, 0)
 	peerCount := this.GroupNumberPeers(groupNumber)
 	maxcnt := 65536
 	for peerNumber := 0; peerNumber < maxcnt; peerNumber++ {
-		pubkey, err := this.GroupPeerPubkey(groupNumber, peerNumber)
+		pubkey, err := this.GroupPeerPubkey(groupNumber, uint32(peerNumber))
 		if err != nil {
 		} else {
 			vec[peerNumber] = pubkey
@@ -397,12 +400,12 @@ func (this *Tox) GetChatList() []int32 {
 	return vec
 }
 
-func (this *Tox) GroupGetType(groupNumber int) (uint8, error) {
+func (this *Tox) GroupGetType(groupNumber uint32) (int, error) {
 	var _gn = C.uint32_t(groupNumber)
 
 	r := C.tox_conference_get_type(this.toxcore, _gn, nil)
 	if int(r) == -1 {
-		return uint8(r), errors.New("get type failed")
+		return int(r), errors.New("get type failed")
 	}
-	return uint8(r), nil
+	return int(r), nil
 }

@@ -177,11 +177,11 @@ type Tox struct {
 	cb_self_connection_status             cb_self_connection_status_ftype
 	cb_self_connection_status_user_data   interface{}
 
-	cb_group_invite                    cb_group_invite_ftype
-	cb_group_invite_user_data          interface{}
-	cb_group_message                   cb_group_message_ftype
-	cb_group_message_user_data         interface{}
-	cb_group_action                    cb_group_action_ftype
+	cb_group_invite            cb_group_invite_ftype
+	cb_group_invite_user_data  interface{}
+	cb_group_message           cb_group_message_ftype
+	cb_group_message_user_data interface{}
+	// cb_group_action                    cb_group_action_ftype
 	cb_group_action_user_data          interface{}
 	cb_group_title                     cb_group_title_ftype
 	cb_group_title_user_data           interface{}
@@ -196,6 +196,8 @@ type Tox struct {
 	cb_file_recv_chunk_user_data    interface{}
 	cb_file_chunk_request           cb_file_chunk_request_ftype
 	cb_file_chunk_request_user_data interface{}
+
+	cb_iterate_data interface{}
 }
 
 var cbUserDatas = newUserData()
@@ -528,12 +530,15 @@ func (this *Tox) IterationInterval() int {
 
 /* The main loop that needs to be run in intervals of tox_iteration_interval() ms. */
 // void tox_iterate(Tox *tox);
+
 func (this *Tox) Iterate() {
 	C.tox_iterate(this.toxcore, nil)
 }
 
 func (this *Tox) Iterate2(userData interface{}) {
+	this.cb_iterate_data = userData
 	C.tox_iterate(this.toxcore, nil)
+	this.cb_iterate_data = nil
 }
 
 func (this *Tox) GetSavedataSize() int32 {
