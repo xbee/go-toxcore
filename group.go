@@ -62,15 +62,22 @@ type cb_group_namelist_change_ftype func(this *Tox, groupNumber int, peerNumber 
 //export callbackGroupInviteWrapperForC
 func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.TOX_CONFERENCE_TYPE, a2 *C.uint8_t, a3 C.size_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_group_invite != nil {
+	for cbfni, ud := range this.cb_group_invites {
+		cbfn := *(*cb_group_invite_ftype)(cbfni)
 		data := C.GoBytes((unsafe.Pointer)(a2), C.int(a3))
-		this.cb_group_invite(this, uint32(a0), uint8(a1), data, this.cb_group_invite_user_data)
+		cbfn(this, uint32(a0), uint8(a1), data, ud)
 	}
 }
 
 func (this *Tox) CallbackGroupInvite(cbfn cb_group_invite_ftype, userData interface{}) {
-	this.cb_group_invite = cbfn
-	this.cb_group_invite_user_data = userData
+	this.CallbackGroupInviteAdd(cbfn, userData)
+}
+func (this *Tox) CallbackGroupInviteAdd(cbfn cb_group_invite_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_group_invites[cbfnp]; ok {
+		return
+	}
+	this.cb_group_invites[cbfnp] = userData
 
 	var _cbfn = (C.cb_group_invite_ftype)(C.callbackGroupInviteWrapperForC)
 	var _userData unsafe.Pointer = nil
@@ -81,22 +88,30 @@ func (this *Tox) CallbackGroupInvite(cbfn cb_group_invite_ftype, userData interf
 //export callbackGroupMessageWrapperForC
 func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, mtype C.TOX_MESSAGE_TYPE, a2 *C.int8_t, a3 C.size_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if mtype == C.TOX_MESSAGE_TYPE_NORMAL {
-		if this.cb_group_message != nil {
+	if int(mtype) == MESSAGE_TYPE_NORMAL {
+		for cbfni, ud := range this.cb_group_messages {
+			cbfn := *(*cb_group_message_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
-			this.cb_group_message(this, int(a0), int(a1), message, this.cb_group_message_user_data)
+			cbfn(this, int(a0), int(a1), message, ud)
 		}
 	} else {
-		if this.cb_group_message != nil {
+		for cbfni, ud := range this.cb_group_actions {
+			cbfn := *(*cb_group_action_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
-			this.cb_group_action(this, int(a0), int(a1), message, this.cb_group_message_user_data)
+			cbfn(this, int(a0), int(a1), message, ud)
 		}
 	}
 }
 
 func (this *Tox) CallbackGroupMessage(cbfn cb_group_message_ftype, userData interface{}) {
-	this.cb_group_message = cbfn
-	this.cb_group_message_user_data = userData
+	this.CallbackGroupMessageAdd(cbfn, userData)
+}
+func (this *Tox) CallbackGroupMessageAdd(cbfn cb_group_message_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_group_messages[cbfnp]; ok {
+		return
+	}
+	this.cb_group_messages[cbfnp] = userData
 
 	if !this.cb_group_message_setted {
 		this.cb_group_message_setted = true
@@ -120,8 +135,14 @@ func callbackGroupActionWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t,
 */
 
 func (this *Tox) CallbackGroupAction(cbfn cb_group_action_ftype, userData interface{}) {
-	this.cb_group_action = cbfn
-	this.cb_group_action_user_data = userData
+	this.CallbackGroupActionAdd(cbfn, userData)
+}
+func (this *Tox) CallbackGroupActionAdd(cbfn cb_group_action_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_group_actions[cbfnp]; ok {
+		return
+	}
+	this.cb_group_actions[cbfnp] = userData
 
 	if !this.cb_group_message_setted {
 		this.cb_group_message_setted = true
@@ -137,15 +158,22 @@ func (this *Tox) CallbackGroupAction(cbfn cb_group_action_ftype, userData interf
 //export callbackGroupTitleWrapperForC
 func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 *C.uint8_t, a3 C.size_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_group_title != nil {
+	for cbfni, ud := range this.cb_group_titles {
+		cbfn := *(*cb_group_title_ftype)(cbfni)
 		title := C.GoStringN((*C.char)((unsafe.Pointer)(a2)), C.int(a3))
-		this.cb_group_title(this, int(a0), int(a1), title, this.cb_group_title_user_data)
+		cbfn(this, int(a0), int(a1), title, ud)
 	}
 }
 
 func (this *Tox) CallbackGroupTitle(cbfn cb_group_title_ftype, userData interface{}) {
-	this.cb_group_title = cbfn
-	this.cb_group_title_user_data = userData
+	this.CallbackGroupTitleAdd(cbfn, userData)
+}
+func (this *Tox) CallbackGroupTitleAdd(cbfn cb_group_title_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_group_titles[cbfnp]; ok {
+		return
+	}
+	this.cb_group_titles[cbfnp] = userData
 
 	var _cbfn = (C.cb_group_title_ftype)(C.callbackGroupTitleWrapperForC)
 	var _userData unsafe.Pointer = nil
@@ -156,14 +184,21 @@ func (this *Tox) CallbackGroupTitle(cbfn cb_group_title_ftype, userData interfac
 //export callbackGroupNameListChangeWrapperForC
 func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 C.TOX_CONFERENCE_STATE_CHANGE, a3 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_group_namelist_change != nil {
-		this.cb_group_namelist_change(this, int(a0), int(a1), uint8(a2), this.cb_group_namelist_change_user_data)
+	for cbfni, ud := range this.cb_group_namelist_changes {
+		cbfn := *(*cb_group_namelist_change_ftype)(cbfni)
+		cbfn(this, int(a0), int(a1), uint8(a2), ud)
 	}
 }
 
 func (this *Tox) CallbackGroupNameListChange(cbfn cb_group_namelist_change_ftype, userData interface{}) {
-	this.cb_group_namelist_change = cbfn
-	this.cb_group_namelist_change_user_data = userData
+	this.CallbackGroupNameListChangeAdd(cbfn, userData)
+}
+func (this *Tox) CallbackGroupNameListChangeAdd(cbfn cb_group_namelist_change_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_group_namelist_changes[cbfnp]; ok {
+		return
+	}
+	this.cb_group_namelist_changes[cbfnp] = userData
 
 	var _cbfn = (C.cb_group_namelist_change_ftype)(C.callbackGroupNameListChangeWrapperForC)
 	var _userData unsafe.Pointer = nil

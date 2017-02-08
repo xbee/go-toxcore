@@ -111,6 +111,7 @@ static inline void fixnousetox() {
 
 */
 import "C"
+import "unsafe"
 
 import (
 	"encoding/hex"
@@ -119,7 +120,6 @@ import (
 	"strings"
 	// "reflect"
 	// "runtime"
-	"unsafe"
 )
 
 //////////
@@ -154,48 +154,28 @@ type Tox struct {
 	toxcore *C.Tox // save C.Tox
 
 	// some callbacks, should be private
-	cb_friend_request                     cb_friend_request_ftype
-	cb_friend_request_user_data           interface{}
-	cb_friend_message                     cb_friend_message_ftype
-	cb_friend_message_user_data           interface{}
-	cb_friend_name                        cb_friend_name_ftype
-	cb_friend_name_user_data              interface{}
-	cb_friend_status_message              cb_friend_status_message_ftype
-	cb_friend_status_message_user_data    interface{}
-	cb_friend_status                      cb_friend_status_ftype
-	cb_friend_status_user_data            interface{}
-	cb_friend_connection_status           cb_friend_connection_status_ftype
-	cb_friend_connection_status_user_data interface{}
-	cb_friend_typing                      cb_friend_typing_ftype
-	cb_friend_typing_user_data            interface{}
-	cb_friend_read_receipt                cb_friend_read_receipt_ftype
-	cb_friend_read_receipt_user_data      interface{}
-	cb_friend_lossy_packet                cb_friend_lossy_packet_ftype
-	cb_friend_lossy_packet_user_data      interface{}
-	cb_friend_lossless_packet             cb_friend_lossless_packet_ftype
-	cb_friend_lossless_packet_user_data   interface{}
-	cb_self_connection_status             cb_self_connection_status_ftype
-	cb_self_connection_status_user_data   interface{}
+	cb_friend_requests           map[unsafe.Pointer]interface{}
+	cb_friend_messages           map[unsafe.Pointer]interface{}
+	cb_friend_names              map[unsafe.Pointer]interface{}
+	cb_friend_status_messages    map[unsafe.Pointer]interface{}
+	cb_friend_statuss            map[unsafe.Pointer]interface{}
+	cb_friend_connection_statuss map[unsafe.Pointer]interface{}
+	cb_friend_typings            map[unsafe.Pointer]interface{}
+	cb_friend_read_receipts      map[unsafe.Pointer]interface{}
+	cb_friend_lossy_packets      map[unsafe.Pointer]interface{}
+	cb_friend_lossless_packets   map[unsafe.Pointer]interface{}
+	cb_self_connection_statuss   map[unsafe.Pointer]interface{}
 
-	cb_group_invite                    cb_group_invite_ftype
-	cb_group_invite_user_data          interface{}
-	cb_group_message                   cb_group_message_ftype
-	cb_group_message_user_data         interface{}
-	cb_group_action                    cb_group_action_ftype
-	cb_group_action_user_data          interface{}
-	cb_group_title                     cb_group_title_ftype
-	cb_group_title_user_data           interface{}
-	cb_group_namelist_change           cb_group_namelist_change_ftype
-	cb_group_namelist_change_user_data interface{}
+	cb_group_invites          map[unsafe.Pointer]interface{}
+	cb_group_messages         map[unsafe.Pointer]interface{}
+	cb_group_actions          map[unsafe.Pointer]interface{}
+	cb_group_titles           map[unsafe.Pointer]interface{}
+	cb_group_namelist_changes map[unsafe.Pointer]interface{}
 
-	cb_file_recv_control            cb_file_recv_control_ftype
-	cb_file_recv_control_user_data  interface{}
-	cb_file_recv                    cb_file_recv_ftype
-	cb_file_recv_user_data          interface{}
-	cb_file_recv_chunk              cb_file_recv_chunk_ftype
-	cb_file_recv_chunk_user_data    interface{}
-	cb_file_chunk_request           cb_file_chunk_request_ftype
-	cb_file_chunk_request_user_data interface{}
+	cb_file_recv_controls  map[unsafe.Pointer]interface{}
+	cb_file_recvs          map[unsafe.Pointer]interface{}
+	cb_file_recv_chunks    map[unsafe.Pointer]interface{}
+	cb_file_chunk_requests map[unsafe.Pointer]interface{}
 
 	cb_iterate_data         interface{}
 	cb_group_message_setted bool
@@ -206,19 +186,26 @@ var cbUserDatas = newUserData()
 //export callbackFriendRequestWrapperForC
 func callbackFriendRequestWrapperForC(m *C.Tox, a0 *C.uint8_t, a1 *C.uint8_t, a2 C.uint16_t, a3 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_request != nil {
+	for cbfni, ud := range this.cb_friend_requests {
 		pubkey_b := C.GoBytes(unsafe.Pointer(a0), C.int(PUBLIC_KEY_SIZE))
 		pubkey := hex.EncodeToString(pubkey_b)
 		pubkey = strings.ToUpper(pubkey)
 		message_b := C.GoBytes(unsafe.Pointer(a1), C.int(a2))
 		message := string(message_b)
-		this.cb_friend_request(this, pubkey, message, this.cb_friend_request_user_data)
+		cbfn := *(*cb_friend_request_ftype)(cbfni)
+		cbfn(this, pubkey, message, ud)
 	}
 }
 
 func (this *Tox) CallbackFriendRequest(cbfn cb_friend_request_ftype, userData interface{}) {
-	this.cb_friend_request = cbfn
-	this.cb_friend_request_user_data = userData
+	this.CallbackFriendRequestAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFriendRequestAdd(cbfn cb_friend_request_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_friend_requests[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_requests[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_request_ftype)(C.callbackFriendRequestWrapperForC)
 	var _userData = unsafe.Pointer(this)
@@ -231,15 +218,22 @@ func (this *Tox) CallbackFriendRequest(cbfn cb_friend_request_ftype, userData in
 func callbackFriendMessageWrapperForC(m *C.Tox, a0 C.uint32_t, mtype C.int,
 	a1 *C.uint8_t, a2 C.uint32_t, a3 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_message != nil {
+	for cbfni, ud := range this.cb_friend_messages {
 		message_ := C.GoStringN((*C.char)(unsafe.Pointer(a1)), (C.int)(a2))
-		this.cb_friend_message(this, uint32(a0), message_, this.cb_friend_message_user_data)
+		cbfn := *(*cb_friend_message_ftype)(cbfni)
+		cbfn(this, uint32(a0), message_, ud)
 	}
 }
 
 func (this *Tox) CallbackFriendMessage(cbfn cb_friend_message_ftype, userData interface{}) {
-	this.cb_friend_message = cbfn
-	this.cb_friend_message_user_data = userData
+	this.CallbackFriendMessageAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFriendMessageAdd(cbfn cb_friend_message_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_friend_messages[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_messages[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_message_ftype)(C.callbackFriendMessageWrapperForC)
 	var _userData unsafe.Pointer = nil
@@ -250,15 +244,22 @@ func (this *Tox) CallbackFriendMessage(cbfn cb_friend_message_ftype, userData in
 //export callbackFriendNameWrapperForC
 func callbackFriendNameWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, a2 C.uint32_t, a3 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_name != nil {
+	for cbfni, ud := range this.cb_friend_names {
 		name := C.GoStringN((*C.char)((unsafe.Pointer)(a1)), C.int(a2))
-		this.cb_friend_name(this, uint32(a0), name, this.cb_friend_name_user_data)
+		cbfn := *(*cb_friend_name_ftype)(cbfni)
+		cbfn(this, uint32(a0), name, ud)
 	}
 }
 
 func (this *Tox) CallbackFriendName(cbfn cb_friend_name_ftype, userData interface{}) {
-	this.cb_friend_name = cbfn
-	this.cb_friend_name_user_data = userData
+	this.CallbackFriendNameAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFriendNameAdd(cbfn cb_friend_name_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_friend_names[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_names[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_name_ftype)(C.callbackFriendNameWrapperForC)
 	var _userData unsafe.Pointer = nil
@@ -269,15 +270,22 @@ func (this *Tox) CallbackFriendName(cbfn cb_friend_name_ftype, userData interfac
 //export callbackFriendStatusMessageWrapperForC
 func callbackFriendStatusMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, a2 C.uint32_t, a3 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_status_message != nil {
+	for cbfni, ud := range this.cb_friend_status_messages {
 		statusText := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(a2))
-		this.cb_friend_status_message(this, uint32(a0), statusText, this.cb_friend_status_message_user_data)
+		cbfn := *(*cb_friend_status_message_ftype)(cbfni)
+		cbfn(this, uint32(a0), statusText, ud)
 	}
 }
 
 func (this *Tox) CallbackFriendStatusMessage(cbfn cb_friend_status_message_ftype, userData interface{}) {
-	this.cb_friend_status_message = cbfn
-	this.cb_friend_status_message_user_data = userData
+	this.CallbackFriendStatusMessage(cbfn, userData)
+}
+func (this *Tox) CallbackFriendStatusMessageAdd(cbfn cb_friend_status_message_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_friend_status_messages[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_status_messages[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_status_message_ftype)(C.callbackFriendStatusMessageWrapperForC)
 	var _userData unsafe.Pointer = nil
@@ -288,14 +296,21 @@ func (this *Tox) CallbackFriendStatusMessage(cbfn cb_friend_status_message_ftype
 //export callbackFriendStatusWrapperForC
 func callbackFriendStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.int, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_status != nil {
-		this.cb_friend_status(this, uint32(a0), int(a1), this.cb_friend_status_user_data)
+	for cbfni, ud := range this.cb_friend_statuss {
+		cbfn := *(*cb_friend_status_ftype)(cbfni)
+		cbfn(this, uint32(a0), int(a1), ud)
 	}
 }
 
 func (this *Tox) CallbackFriendStatus(cbfn cb_friend_status_ftype, userData interface{}) {
-	this.cb_friend_status = cbfn
-	this.cb_friend_status_user_data = userData
+	this.CallbackFriendStatusAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFriendStatusAdd(cbfn cb_friend_status_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_friend_statuss[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_statuss[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_status_ftype)(C.callbackFriendStatusWrapperForC)
 	var _userData unsafe.Pointer = nil
@@ -306,14 +321,21 @@ func (this *Tox) CallbackFriendStatus(cbfn cb_friend_status_ftype, userData inte
 //export callbackFriendConnectionStatusWrapperForC
 func callbackFriendConnectionStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.int, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_connection_status != nil {
-		this.cb_friend_connection_status(this, uint32(a0), int(a1), this.cb_friend_connection_status_user_data)
+	for cbfni, ud := range this.cb_friend_connection_statuss {
+		cbfn := *(*cb_friend_connection_status_ftype)((unsafe.Pointer)(cbfni))
+		cbfn(this, uint32(a0), int(a1), ud)
 	}
 }
 
 func (this *Tox) CallbackFriendConnectionStatus(cbfn cb_friend_connection_status_ftype, userData interface{}) {
-	this.cb_friend_connection_status = cbfn
-	this.cb_friend_connection_status_user_data = userData
+	this.CallbackFriendConnectionStatusAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFriendConnectionStatusAdd(cbfn cb_friend_connection_status_ftype, userData interface{}) {
+	cbfnp := unsafe.Pointer(&cbfn)
+	if _, ok := this.cb_friend_connection_statuss[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_connection_statuss[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_connection_status_ftype)(C.callbackFriendConnectionStatusWrapperForC)
 	var _userData unsafe.Pointer = nil
@@ -324,14 +346,21 @@ func (this *Tox) CallbackFriendConnectionStatus(cbfn cb_friend_connection_status
 //export callbackFriendTypingWrapperForC
 func callbackFriendTypingWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint8_t, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_typing != nil {
-		this.cb_friend_typing(this, uint32(a0), uint8(a1), this.cb_friend_typing_user_data)
+	for cbfni, ud := range this.cb_friend_typings {
+		cbfn := *(*cb_friend_typing_ftype)(cbfni)
+		cbfn(this, uint32(a0), uint8(a1), ud)
 	}
 }
 
 func (this *Tox) CallbackFriendTyping(cbfn cb_friend_typing_ftype, userData interface{}) {
-	this.cb_friend_typing = cbfn
-	this.cb_friend_typing_user_data = userData
+	this.CallbackFriendTypingAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFriendTypingAdd(cbfn cb_friend_typing_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_friend_typings[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_typings[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_typing_ftype)(C.callbackFriendTypingWrapperForC)
 	var _userData unsafe.Pointer = nil
@@ -342,14 +371,21 @@ func (this *Tox) CallbackFriendTyping(cbfn cb_friend_typing_ftype, userData inte
 //export callbackFriendReadReceiptWrapperForC
 func callbackFriendReadReceiptWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_read_receipt != nil {
-		this.cb_friend_read_receipt(this, uint32(a0), uint32(a1), this.cb_friend_read_receipt_user_data)
+	for cbfni, ud := range this.cb_friend_read_receipts {
+		cbfn := *(*cb_friend_read_receipt_ftype)(cbfni)
+		cbfn(this, uint32(a0), uint32(a1), ud)
 	}
 }
 
 func (this *Tox) CallbackFriendReadReceipt(cbfn cb_friend_read_receipt_ftype, userData interface{}) {
-	this.cb_friend_read_receipt = cbfn
-	this.cb_friend_read_receipt_user_data = userData
+	this.CallbackFriendReadReceiptAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFriendReadReceiptAdd(cbfn cb_friend_read_receipt_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_friend_read_receipts[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_read_receipts[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_read_receipt_ftype)(C.callbackFriendReadReceiptWrapperForC)
 	var _userData unsafe.Pointer
@@ -360,15 +396,22 @@ func (this *Tox) CallbackFriendReadReceipt(cbfn cb_friend_read_receipt_ftype, us
 //export callbackFriendLossyPacketWrapperForC
 func callbackFriendLossyPacketWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, len C.size_t, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_lossy_packet != nil {
+	for cbfni, ud := range this.cb_friend_lossy_packets {
+		cbfn := *(*cb_friend_lossy_packet_ftype)(cbfni)
 		msg := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(len))
-		this.cb_friend_lossy_packet(this, uint32(a0), msg, this.cb_friend_lossy_packet_user_data)
+		cbfn(this, uint32(a0), msg, ud)
 	}
 }
 
 func (this *Tox) CallbackFriendLossyPacket(cbfn cb_friend_lossy_packet_ftype, userData interface{}) {
-	this.cb_friend_lossy_packet = cbfn
-	this.cb_friend_lossy_packet_user_data = userData
+	this.CallbackFriendLossyPacketAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFriendLossyPacketAdd(cbfn cb_friend_lossy_packet_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_friend_lossy_packets[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_lossy_packets[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_lossy_packet_ftype)(C.callbackFriendLossyPacketWrapperForC)
 	var _userData unsafe.Pointer
@@ -379,15 +422,22 @@ func (this *Tox) CallbackFriendLossyPacket(cbfn cb_friend_lossy_packet_ftype, us
 //export callbackFriendLosslessPacketWrapperForC
 func callbackFriendLosslessPacketWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, len C.size_t, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_friend_lossless_packet != nil {
+	for cbfni, ud := range this.cb_friend_lossless_packets {
+		cbfn := *(*cb_friend_lossless_packet_ftype)(cbfni)
 		msg := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(len))
-		this.cb_friend_lossless_packet(this, uint32(a0), msg, this.cb_friend_lossless_packet_user_data)
+		cbfn(this, uint32(a0), msg, ud)
 	}
 }
 
 func (this *Tox) CallbackFriendLosslessPacket(cbfn cb_friend_lossless_packet_ftype, userData interface{}) {
-	this.cb_friend_lossless_packet = cbfn
-	this.cb_friend_lossless_packet_user_data = userData
+	this.CallbackFriendLosslessPacketAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFriendLosslessPacketAdd(cbfn cb_friend_lossless_packet_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_friend_lossless_packets[cbfnp]; ok {
+		return
+	}
+	this.cb_friend_lossless_packets[cbfnp] = userData
 
 	var _cbfn = (C.cb_friend_lossless_packet_ftype)(C.callbackFriendLosslessPacketWrapperForC)
 	var _userData unsafe.Pointer
@@ -398,14 +448,20 @@ func (this *Tox) CallbackFriendLosslessPacket(cbfn cb_friend_lossless_packet_fty
 //export callbackSelfConnectionStatusWrapperForC
 func callbackSelfConnectionStatusWrapperForC(m *C.Tox, status C.int, a2 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_self_connection_status != nil {
-		this.cb_self_connection_status(this, int(status), this.cb_self_connection_status_user_data)
+	for cbfni, ud := range this.cb_self_connection_statuss {
+		cbfn := *(*cb_self_connection_status_ftype)(cbfni)
+		cbfn(this, int(status), ud)
 	}
 }
 
 func (this *Tox) CallbackSelfConnectionStatus(cbfn cb_self_connection_status_ftype, userData interface{}) {
-	this.cb_self_connection_status = cbfn
-	this.cb_self_connection_status_user_data = userData
+}
+func (this *Tox) CallbackSelfConnectionStatusAdd(cbfn cb_self_connection_status_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_self_connection_statuss[cbfnp]; ok {
+		return
+	}
+	this.cb_self_connection_statuss[cbfnp] = userData
 
 	var _cbfn = (C.cb_self_connection_status_ftype)(C.callbackSelfConnectionStatusWrapperForC)
 	// var _userData = unsafe.Pointer(this)
@@ -418,15 +474,21 @@ func (this *Tox) CallbackSelfConnectionStatus(cbfn cb_self_connection_status_fty
 func callbackFileRecvControlWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
 	control C.TOX_FILE_CONTROL, userData unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_file_recv_control != nil {
-		this.cb_file_recv_control(this, uint32(friendNumber), uint32(fileNumber),
-			int(control), this.cb_file_recv_control_user_data)
+	for cbfni, ud := range this.cb_file_recv_controls {
+		cbfn := *(*cb_file_recv_control_ftype)(cbfni)
+		cbfn(this, uint32(friendNumber), uint32(fileNumber), int(control), ud)
 	}
 }
 
 func (this *Tox) CallbackFileRecvControl(cbfn cb_file_recv_control_ftype, userData interface{}) {
-	this.cb_file_recv_control = cbfn
-	this.cb_file_recv_control_user_data = userData
+	this.CallbackFileRecvControlAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFileRecvControlAdd(cbfn cb_file_recv_control_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_file_recv_controls[cbfnp]; ok {
+		return
+	}
+	this.cb_file_recv_controls[cbfnp] = userData
 	var _cbfn = (C.cb_file_recv_control_ftype)(unsafe.Pointer(C.callbackFileRecvControlWrapperForC))
 	var _userData unsafe.Pointer = nil
 
@@ -437,16 +499,23 @@ func (this *Tox) CallbackFileRecvControl(cbfn cb_file_recv_control_ftype, userDa
 func callbackFileRecvWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t, kind C.uint32_t,
 	fileSize C.uint64_t, fileName *C.uint8_t, fileNameLength C.size_t, userData unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_file_recv != nil {
+	for cbfni, ud := range this.cb_file_recvs {
+		cbfn := *(*cb_file_recv_ftype)(cbfni)
 		fileName_ := C.GoStringN((*C.char)(unsafe.Pointer(fileName)), C.int(fileNameLength))
-		this.cb_file_recv(this, uint32(friendNumber), uint32(fileNumber), uint32(kind),
-			uint64(fileSize), fileName_, this.cb_file_recv_user_data)
+		cbfn(this, uint32(friendNumber), uint32(fileNumber), uint32(kind),
+			uint64(fileSize), fileName_, ud)
 	}
 }
 
 func (this *Tox) CallbackFileRecv(cbfn cb_file_recv_ftype, userData interface{}) {
-	this.cb_file_recv = cbfn
-	this.cb_file_recv_user_data = userData
+	this.CallbackFileRecvAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFileRecvAdd(cbfn cb_file_recv_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_file_recvs[cbfnp]; ok {
+		return
+	}
+	this.cb_file_recvs[cbfnp] = userData
 	var _cbfn = (C.cb_file_recv_ftype)(unsafe.Pointer(C.callbackFileRecvWrapperForC))
 	var _userData unsafe.Pointer = nil
 
@@ -457,16 +526,23 @@ func (this *Tox) CallbackFileRecv(cbfn cb_file_recv_ftype, userData interface{})
 func callbackFileRecvChunkWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
 	position C.uint64_t, data *C.uint8_t, length C.size_t, userData unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_file_recv_chunk != nil {
+	for cbfni, ud := range this.cb_file_recv_chunks {
+		cbfn := *(*cb_file_recv_chunk_ftype)(cbfni)
 		data_ := C.GoBytes((unsafe.Pointer)(data), C.int(length))
-		this.cb_file_recv_chunk(this, uint32(friendNumber), uint32(fileNumber), uint64(position),
-			data_, this.cb_file_recv_chunk_user_data)
+		cbfn(this, uint32(friendNumber), uint32(fileNumber), uint64(position), data_, ud)
 	}
 }
 
 func (this *Tox) CallbackFileRecvChunk(cbfn cb_file_recv_chunk_ftype, userData interface{}) {
-	this.cb_file_recv_chunk = cbfn
-	this.cb_file_recv_chunk_user_data = userData
+	this.CallbackFileRecvChunkAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFileRecvChunkAdd(cbfn cb_file_recv_chunk_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_file_recv_chunks[cbfnp]; ok {
+		return
+	}
+	this.cb_file_recv_chunks[cbfnp] = userData
+
 	var _cbfn = (C.cb_file_recv_chunk_ftype)(unsafe.Pointer(C.callbackFileRecvChunkWrapperForC))
 	var _userData unsafe.Pointer = nil
 
@@ -477,15 +553,22 @@ func (this *Tox) CallbackFileRecvChunk(cbfn cb_file_recv_chunk_ftype, userData i
 func callbackFileChunkRequestWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C.uint32_t,
 	position C.uint64_t, length C.size_t, userData unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	if this.cb_file_chunk_request != nil {
-		this.cb_file_chunk_request(this, uint32(friendNumber), uint32(fileNumber), uint64(position),
-			int(length), this.cb_file_chunk_request_user_data)
+	for cbfni, ud := range this.cb_file_chunk_requests {
+		cbfn := *(*cb_file_chunk_request_ftype)(cbfni)
+		cbfn(this, uint32(friendNumber), uint32(fileNumber), uint64(position), int(length), ud)
 	}
 }
 
 func (this *Tox) CallbackFileChunkRequest(cbfn cb_file_chunk_request_ftype, userData interface{}) {
-	this.cb_file_chunk_request = cbfn
-	this.cb_file_chunk_request_user_data = userData
+	this.CallbackFileChunkRequestAdd(cbfn, userData)
+}
+func (this *Tox) CallbackFileChunkRequestAdd(cbfn cb_file_chunk_request_ftype, userData interface{}) {
+	cbfnp := (unsafe.Pointer)(&cbfn)
+	if _, ok := this.cb_file_chunk_requests[cbfnp]; ok {
+		return
+	}
+	this.cb_file_chunk_requests[cbfnp] = userData
+
 	var _cbfn = (C.cb_file_chunk_request_ftype)(unsafe.Pointer(C.callbackFileChunkRequestWrapperForC))
 	var _userData unsafe.Pointer = nil
 
@@ -509,6 +592,30 @@ func NewTox(opt *ToxOptions) *Tox {
 		return nil
 	}
 	cbUserDatas.set(toxcore, tox)
+
+	//
+	tox.cb_friend_requests = make(map[unsafe.Pointer]interface{})
+	tox.cb_friend_messages = make(map[unsafe.Pointer]interface{})
+	tox.cb_friend_names = make(map[unsafe.Pointer]interface{})
+	tox.cb_friend_status_messages = make(map[unsafe.Pointer]interface{})
+	tox.cb_friend_statuss = make(map[unsafe.Pointer]interface{})
+	tox.cb_friend_connection_statuss = make(map[unsafe.Pointer]interface{})
+	tox.cb_friend_typings = make(map[unsafe.Pointer]interface{})
+	tox.cb_friend_read_receipts = make(map[unsafe.Pointer]interface{})
+	tox.cb_friend_lossy_packets = make(map[unsafe.Pointer]interface{})
+	tox.cb_friend_lossless_packets = make(map[unsafe.Pointer]interface{})
+	tox.cb_self_connection_statuss = make(map[unsafe.Pointer]interface{})
+
+	tox.cb_group_invites = make(map[unsafe.Pointer]interface{})
+	tox.cb_group_messages = make(map[unsafe.Pointer]interface{})
+	tox.cb_group_actions = make(map[unsafe.Pointer]interface{})
+	tox.cb_group_titles = make(map[unsafe.Pointer]interface{})
+	tox.cb_group_namelist_changes = make(map[unsafe.Pointer]interface{})
+
+	tox.cb_file_recv_controls = make(map[unsafe.Pointer]interface{})
+	tox.cb_file_recvs = make(map[unsafe.Pointer]interface{})
+	tox.cb_file_recv_chunks = make(map[unsafe.Pointer]interface{})
+	tox.cb_file_chunk_requests = make(map[unsafe.Pointer]interface{})
 
 	return tox
 }
