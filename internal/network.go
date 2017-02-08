@@ -50,12 +50,12 @@ func NetworkingAtStartup() int {
 }
 
 func SockValid(sock int) int {
-	r := C.sock_valid((C.sock_t)(sock))
+	r := C.sock_valid((C.Socket)(sock))
 	return int(r)
 }
 
 func SockKill(sock int) {
-	C.kill_sock((C.sock_t)(sock))
+	C.kill_sock((C.Socket)(sock))
 }
 
 /* Set socket as nonblocking
@@ -64,7 +64,7 @@ func SockKill(sock int) {
  * return 0 on failure
  */
 func SetSocketNonblock(sock int) int {
-	r := C.set_socket_nonblock((C.sock_t)(sock))
+	r := C.set_socket_nonblock((C.Socket)(sock))
 	return int(r)
 }
 
@@ -74,7 +74,7 @@ func SetSocketNonblock(sock int) int {
  * return 0 on failure
  */
 func SetSocketNosigpipe(sock int) int {
-	r := C.set_socket_nosigpipe((C.sock_t)(sock))
+	r := C.set_socket_nosigpipe((C.Socket)(sock))
 	return int(r)
 }
 
@@ -84,7 +84,7 @@ func SetSocketNosigpipe(sock int) int {
  * return 0 on failure
  */
 func SetSocketReuseaddr(sock int) int {
-	r := C.set_socket_reuseaddr((C.sock_t)(sock))
+	r := C.set_socket_reuseaddr((C.Socket)(sock))
 	return int(r)
 }
 
@@ -94,7 +94,7 @@ func SetSocketReuseaddr(sock int) int {
  * return 0 on failure
  */
 func SetSocketDualstack(sock int) int {
-	r := C.set_socket_dualstack((C.sock_t)(sock))
+	r := C.set_socket_dualstack((C.Socket)(sock))
 	return int(r)
 }
 
@@ -114,7 +114,7 @@ func (this *NetworkCore) SendPacket() {
 // void networking_registerhandler(Networking_Core *net, uint8_t byte, packet_handler_callback cb, void *object);
 
 /* Call this several times a second. */
-func (this *NetworkCore) Poll() { C.networking_poll(this.net) }
+func (this *NetworkCore) Poll() { C.networking_poll(this.net, nil) }
 
 /* Initialize networking.
  * bind to ip and port.
@@ -129,7 +129,7 @@ func (this *NetworkCore) Poll() { C.networking_poll(this.net) }
 func NewNetworkCore(ip IP, port uint16) *NetworkCore {
 	// Networking_Core *new_networking(IP ip, uint16_t port);
 	this := &NetworkCore{}
-	this.net = C.new_networking(ip.ToC(), C.uint16_t(port))
+	this.net = C.new_networking(nil, ip.ToC(), C.uint16_t(port))
 
 	return this
 }
@@ -137,7 +137,7 @@ func NewNetworkCoreEx(ip IP, port_from, port_to uint16) (*NetworkCore, uint) {
 	// Networking_Core *new_networking_ex(IP ip, uint16_t port_from, uint16_t port_to, unsigned int *error);
 	this := &NetworkCore{}
 	var error C.uint
-	this.net = C.new_networking_ex(ip.ToC(), C.uint16_t(port_from), C.uint16_t(port_to), &error)
+	this.net = C.new_networking_ex(nil, ip.ToC(), C.uint16_t(port_from), C.uint16_t(port_to), &error)
 
 	return this, uint(error)
 }

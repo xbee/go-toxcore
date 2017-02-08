@@ -87,7 +87,8 @@ func (this *DHT) Save()                         {}
 func (this *DHT) Load()                         {}
 func NewDHT(net *NetworkCore) *DHT {
 	this := &DHT{}
-	this.dht = C.new_DHT(net.net)
+	this.dht = C.new_DHT(nil, net.net, true)
+
 	return this
 }
 func (this *DHT) Kill()            {}
