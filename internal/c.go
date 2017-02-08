@@ -3,7 +3,8 @@ package toxin
 /*
 #cgo CFLAGS: -g -O2 -std=c99 -Wall
 #cgo CFLAGS: -I/path/to/toxcore/toxcore
-#cgo pkg-config: libtoxcore
+#cgo LDFLAGS: -lsodium /usr/lib/libtoxcore.a
+// #cgo pkg-config: libtoxcore
 */
 import "C"
 

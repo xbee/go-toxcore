@@ -96,6 +96,10 @@ func (this *DHT) IsConnected() int { return int(C.DHT_isconnected(this.dht)) }
 func (this *DHT) NonLanConnected() {}
 func (this *DHT) AddToList()       {}
 
+func (this *DHT) SecretKey() []byte {
+	return C.GoBytes((unsafe.Pointer)(&this.dht.self_secret_key[0]), C.TOX_SECRET_KEY_SIZE)
+}
+
 func (this *DHT) Dump() {
 	/*
 	       Networking_Core *net;
