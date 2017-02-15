@@ -311,7 +311,7 @@ func (this *Tox) GroupMessageSend(groupNumber int, message string) (int, error) 
 	var _length = C.size_t(len(message))
 
 	var cerr C.TOX_ERR_CONFERENCE_SEND_MESSAGE
-	var mtype C.TOX_MESSAGE_TYPE = C.TOX_MESSAGE_TYPE_ACTION
+	var mtype C.TOX_MESSAGE_TYPE = C.TOX_MESSAGE_TYPE_NORMAL
 	r := C.tox_conference_send_message(this.toxcore, _gn, mtype, char2uint8(_message), _length, &cerr)
 	if r == false {
 		return 0, errors.New("group send message failed")

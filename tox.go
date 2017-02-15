@@ -455,6 +455,7 @@ func callbackSelfConnectionStatusWrapperForC(m *C.Tox, status C.int, a2 unsafe.P
 }
 
 func (this *Tox) CallbackSelfConnectionStatus(cbfn cb_self_connection_status_ftype, userData interface{}) {
+	this.CallbackSelfConnectionStatusAdd(cbfn, userData)
 }
 func (this *Tox) CallbackSelfConnectionStatusAdd(cbfn cb_self_connection_status_ftype, userData interface{}) {
 	cbfnp := (unsafe.Pointer)(&cbfn)
