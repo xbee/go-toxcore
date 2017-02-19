@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/kitech/go-toxcore.svg?branch=master)](https://travis-ci.org/kitech/go-toxcore)
+[![GoDoc](https://godoc.org/github.com/kitech/go-toxcore?status.svg)](https://godoc.org/github.com/kitech/go-toxcore)
 
 ## go-toxcore
 The golang bindings for libtoxcore 
