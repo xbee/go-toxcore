@@ -278,7 +278,7 @@ func callbackFriendStatusMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8
 }
 
 func (this *Tox) CallbackFriendStatusMessage(cbfn cb_friend_status_message_ftype, userData interface{}) {
-	this.CallbackFriendStatusMessage(cbfn, userData)
+	this.CallbackFriendStatusMessageAdd(cbfn, userData)
 }
 func (this *Tox) CallbackFriendStatusMessageAdd(cbfn cb_friend_status_message_ftype, userData interface{}) {
 	cbfnp := (unsafe.Pointer)(&cbfn)
