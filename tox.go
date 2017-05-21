@@ -118,6 +118,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	// "reflect"
 	// "runtime"
 )
@@ -149,9 +150,11 @@ type cb_file_chunk_request_ftype func(this *Tox, friend_number uint32, file_numb
 	length int, user_data interface{})
 
 type Tox struct {
-	opts    *ToxOptions
-	toxopts *C.struct_Tox_Options
-	toxcore *C.Tox // save C.Tox
+	opts       *ToxOptions
+	toxopts    *C.struct_Tox_Options
+	toxcore    *C.Tox // save C.Tox
+	threadSafe bool
+	mu         sync.RWMutex
 
 	// some callbacks, should be private
 	cb_friend_requests           map[unsafe.Pointer]interface{}
@@ -193,6 +196,8 @@ func callbackFriendRequestWrapperForC(m *C.Tox, a0 *C.uint8_t, a1 *C.uint8_t, a2
 		message_b := C.GoBytes(unsafe.Pointer(a1), C.int(a2))
 		message := string(message_b)
 		cbfn := *(*cb_friend_request_ftype)(cbfni)
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, pubkey, message, ud)
 	}
 }
@@ -221,6 +226,8 @@ func callbackFriendMessageWrapperForC(m *C.Tox, a0 C.uint32_t, mtype C.int,
 	for cbfni, ud := range this.cb_friend_messages {
 		message_ := C.GoStringN((*C.char)(unsafe.Pointer(a1)), (C.int)(a2))
 		cbfn := *(*cb_friend_message_ftype)(cbfni)
+		this.beforeCallback()
+		this.afterCallback()
 		cbfn(this, uint32(a0), message_, ud)
 	}
 }
@@ -247,6 +254,8 @@ func callbackFriendNameWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t, a2 C.
 	for cbfni, ud := range this.cb_friend_names {
 		name := C.GoStringN((*C.char)((unsafe.Pointer)(a1)), C.int(a2))
 		cbfn := *(*cb_friend_name_ftype)(cbfni)
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, uint32(a0), name, ud)
 	}
 }
@@ -273,6 +282,8 @@ func callbackFriendStatusMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8
 	for cbfni, ud := range this.cb_friend_status_messages {
 		statusText := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(a2))
 		cbfn := *(*cb_friend_status_message_ftype)(cbfni)
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, uint32(a0), statusText, ud)
 	}
 }
@@ -298,6 +309,8 @@ func callbackFriendStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.int, a2 unsaf
 	var this = cbUserDatas.get(m)
 	for cbfni, ud := range this.cb_friend_statuss {
 		cbfn := *(*cb_friend_status_ftype)(cbfni)
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, uint32(a0), int(a1), ud)
 	}
 }
@@ -323,6 +336,8 @@ func callbackFriendConnectionStatusWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.int
 	var this = cbUserDatas.get(m)
 	for cbfni, ud := range this.cb_friend_connection_statuss {
 		cbfn := *(*cb_friend_connection_status_ftype)((unsafe.Pointer)(cbfni))
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, uint32(a0), int(a1), ud)
 	}
 }
@@ -348,6 +363,8 @@ func callbackFriendTypingWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint8_t, a2 u
 	var this = cbUserDatas.get(m)
 	for cbfni, ud := range this.cb_friend_typings {
 		cbfn := *(*cb_friend_typing_ftype)(cbfni)
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, uint32(a0), uint8(a1), ud)
 	}
 }
@@ -373,6 +390,8 @@ func callbackFriendReadReceiptWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t
 	var this = cbUserDatas.get(m)
 	for cbfni, ud := range this.cb_friend_read_receipts {
 		cbfn := *(*cb_friend_read_receipt_ftype)(cbfni)
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, uint32(a0), uint32(a1), ud)
 	}
 }
@@ -399,6 +418,8 @@ func callbackFriendLossyPacketWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint8_t
 	for cbfni, ud := range this.cb_friend_lossy_packets {
 		cbfn := *(*cb_friend_lossy_packet_ftype)(cbfni)
 		msg := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(len))
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, uint32(a0), msg, ud)
 	}
 }
@@ -425,6 +446,8 @@ func callbackFriendLosslessPacketWrapperForC(m *C.Tox, a0 C.uint32_t, a1 *C.uint
 	for cbfni, ud := range this.cb_friend_lossless_packets {
 		cbfn := *(*cb_friend_lossless_packet_ftype)(cbfni)
 		msg := C.GoStringN((*C.char)(unsafe.Pointer(a1)), C.int(len))
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, uint32(a0), msg, ud)
 	}
 }
@@ -450,6 +473,8 @@ func callbackSelfConnectionStatusWrapperForC(m *C.Tox, status C.int, a2 unsafe.P
 	var this = cbUserDatas.get(m)
 	for cbfni, ud := range this.cb_self_connection_statuss {
 		cbfn := *(*cb_self_connection_status_ftype)(cbfni)
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, int(status), ud)
 	}
 }
@@ -477,6 +502,8 @@ func callbackFileRecvControlWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileN
 	var this = cbUserDatas.get(m)
 	for cbfni, ud := range this.cb_file_recv_controls {
 		cbfn := *(*cb_file_recv_control_ftype)(cbfni)
+		this.beforeCallback()
+		this.afterCallback()
 		cbfn(this, uint32(friendNumber), uint32(fileNumber), int(control), ud)
 	}
 }
@@ -503,6 +530,8 @@ func callbackFileRecvWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNumber C
 	for cbfni, ud := range this.cb_file_recvs {
 		cbfn := *(*cb_file_recv_ftype)(cbfni)
 		fileName_ := C.GoStringN((*C.char)(unsafe.Pointer(fileName)), C.int(fileNameLength))
+		this.beforeCallback()
+		this.afterCallback()
 		cbfn(this, uint32(friendNumber), uint32(fileNumber), uint32(kind),
 			uint64(fileSize), fileName_, ud)
 	}
@@ -530,6 +559,8 @@ func callbackFileRecvChunkWrapperForC(m *C.Tox, friendNumber C.uint32_t, fileNum
 	for cbfni, ud := range this.cb_file_recv_chunks {
 		cbfn := *(*cb_file_recv_chunk_ftype)(cbfni)
 		data_ := C.GoBytes((unsafe.Pointer)(data), C.int(length))
+		this.beforeCallback()
+		this.afterCallback()
 		cbfn(this, uint32(friendNumber), uint32(fileNumber), uint64(position), data_, ud)
 	}
 }
@@ -556,6 +587,8 @@ func callbackFileChunkRequestWrapperForC(m *C.Tox, friendNumber C.uint32_t, file
 	var this = cbUserDatas.get(m)
 	for cbfni, ud := range this.cb_file_chunk_requests {
 		cbfn := *(*cb_file_chunk_request_ftype)(cbfni)
+		this.beforeCallback()
+		this.afterCallback()
 		cbfn(this, uint32(friendNumber), uint32(fileNumber), uint64(position), int(length), ud)
 	}
 }
@@ -622,6 +655,9 @@ func NewTox(opt *ToxOptions) *Tox {
 }
 
 func (this *Tox) Kill() {
+	this.lock()
+	defer this.unlock()
+
 	if this == nil || this.toxcore == nil {
 		return
 	}
@@ -633,21 +669,42 @@ func (this *Tox) Kill() {
 
 // uint32_t tox_iteration_interval(Tox *tox);
 func (this *Tox) IterationInterval() int {
+	this.lock()
+	defer this.unlock()
+
 	r := C.tox_iteration_interval(this.toxcore)
 	return int(r)
 }
 
 /* The main loop that needs to be run in intervals of tox_iteration_interval() ms. */
 // void tox_iterate(Tox *tox);
-
+// compatable with legacy version
 func (this *Tox) Iterate() {
+	this.lock()
+	defer this.unlock()
+
 	C.tox_iterate(this.toxcore, nil)
 }
 
+// for toktok new method
 func (this *Tox) Iterate2(userData interface{}) {
+	this.lock()
+	defer this.unlock()
+
 	this.cb_iterate_data = userData
 	C.tox_iterate(this.toxcore, nil)
 	this.cb_iterate_data = nil
+}
+
+func (this *Tox) lock() {
+	if this.opts.ThreadSafe {
+		this.mu.Lock()
+	}
+}
+func (this *Tox) unlock() {
+	if this.opts.ThreadSafe {
+		this.mu.Unlock()
+	}
 }
 
 func (this *Tox) GetSavedataSize() int32 {
@@ -667,6 +724,9 @@ func (this *Tox) GetSavedata() []byte {
  * @param pubkey hex 64B length
  */
 func (this *Tox) Bootstrap(addr string, port uint16, pubkey string) (bool, error) {
+	this.lock()
+	defer this.unlock()
+
 	b_pubkey, err := hex.DecodeString(pubkey)
 	if err != nil {
 		return false, toxerr("Invalid pubkey")
@@ -700,6 +760,9 @@ func (this *Tox) SelfGetConnectionStatus() int {
 }
 
 func (this *Tox) FriendAdd(friendId string, message string) (uint32, error) {
+	this.lock()
+	defer this.unlock()
+
 	friendId_b, err := hex.DecodeString(friendId)
 	friendId_p := unsafe.Pointer(&friendId_b[0])
 	if err != nil {
@@ -719,6 +782,9 @@ func (this *Tox) FriendAdd(friendId string, message string) (uint32, error) {
 }
 
 func (this *Tox) FriendAddNorequest(friendId string) (uint32, error) {
+	this.lock()
+	defer this.unlock()
+
 	friendId_b, err := hex.DecodeString(friendId)
 	if err != nil {
 		return 0, err
@@ -764,6 +830,9 @@ func (this *Tox) FriendGetPublicKey(friendNumber uint32) (string, error) {
 }
 
 func (this *Tox) FriendDelete(friendNumber uint32) (bool, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _fn = C.uint32_t(friendNumber)
 
 	var cerr C.TOX_ERR_FRIEND_DELETE
@@ -793,6 +862,9 @@ func (this *Tox) FriendExists(friendNumber uint32) bool {
 }
 
 func (this *Tox) FriendSendMessage(friendNumber uint32, message string) (uint32, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _fn = C.uint32_t(friendNumber)
 	var _message = C.CString(message)
 	defer C.free(unsafe.Pointer(_message))
@@ -808,6 +880,9 @@ func (this *Tox) FriendSendMessage(friendNumber uint32, message string) (uint32,
 }
 
 func (this *Tox) FriendSendAction(friendNumber uint32, action string) (uint32, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _fn = C.uint32_t(friendNumber)
 	var _action = C.CString(action)
 	defer C.free(unsafe.Pointer(_action))
@@ -823,6 +898,9 @@ func (this *Tox) FriendSendAction(friendNumber uint32, action string) (uint32, e
 }
 
 func (this *Tox) SelfSetName(name string) error {
+	this.lock()
+	defer this.unlock()
+
 	var _name = C.CString(name)
 	defer C.free(unsafe.Pointer(_name))
 	var _length = C.size_t(len(name))
@@ -876,6 +954,9 @@ func (this *Tox) SelfGetNameSize() int {
 }
 
 func (this *Tox) SelfSetStatusMessage(status string) (bool, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _status = C.CString(status)
 	defer C.free(unsafe.Pointer(_status))
 	var _length = C.size_t(len(status))
@@ -965,6 +1046,9 @@ func (this *Tox) FriendGetLastOnline(friendNumber uint32) (uint64, error) {
 }
 
 func (this *Tox) SelfSetTyping(friendNumber uint32, typing bool) (bool, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _fn = C.uint32_t(friendNumber)
 	var _typing = C._Bool(typing)
 
@@ -1011,6 +1095,9 @@ func (this *Tox) SelfGetNospam() uint32 {
 }
 
 func (this *Tox) SelfSetNospam(nospam uint32) {
+	this.lock()
+	defer this.unlock()
+
 	var _nospam = C.uint32_t(nospam)
 
 	C.tox_self_set_nospam(this.toxcore, _nospam)
@@ -1041,6 +1128,9 @@ func (this *Tox) SelfGetSecretKey() string {
 // tox_lossy_***
 
 func (this *Tox) FriendSendLossyPacket(friendNumber uint32, data string) error {
+	this.lock()
+	defer this.unlock()
+
 	var _fn = C.uint32_t(friendNumber)
 	var _data = C.CString(data)
 	defer C.free(unsafe.Pointer(_data))
@@ -1055,6 +1145,9 @@ func (this *Tox) FriendSendLossyPacket(friendNumber uint32, data string) error {
 }
 
 func (this *Tox) FriendSendLosslessPacket(friendNumber uint32, data string) error {
+	this.lock()
+	defer this.unlock()
+
 	var _fn = C.uint32_t(friendNumber)
 	var _data = C.CString(data)
 	defer C.free(unsafe.Pointer(_data))
@@ -1094,6 +1187,9 @@ func (this *Tox) FileControl(friendNumber uint32, fileNumber uint32, control int
 }
 
 func (this *Tox) FileSend(friendNumber uint32, kind uint32, fileSize uint64, fileId string, fileName string) (uint32, error) {
+	this.lock()
+	defer this.unlock()
+
 	if len(fileId) != FILE_ID_LENGTH*2 {
 	}
 
@@ -1110,6 +1206,9 @@ func (this *Tox) FileSend(friendNumber uint32, kind uint32, fileSize uint64, fil
 }
 
 func (this *Tox) FileSendChunk(friendNumber uint32, fileNumber uint32, position uint64, data []byte) (bool, error) {
+	this.lock()
+	defer this.unlock()
+
 	if data == nil || len(data) == 0 {
 		return false, toxerr("empty data")
 	}
@@ -1123,6 +1222,9 @@ func (this *Tox) FileSendChunk(friendNumber uint32, fileNumber uint32, position 
 }
 
 func (this *Tox) FileSeek(friendNumber uint32, fileNumber uint32, position uint64) (bool, error) {
+	this.lock()
+	defer this.unlock()
+
 	var cerr C.TOX_ERR_FILE_SEEK
 	r := C.tox_file_seek(this.toxcore, C.uint32_t(friendNumber), C.uint32_t(fileNumber),
 		C.uint64_t(position), &cerr)
@@ -1147,8 +1249,10 @@ func (this *Tox) FileGetFileId(friendNumber uint32, fileNumber uint32) (string, 
 }
 
 // boostrap, see upper
-
 func (this *Tox) AddTcpRelay(addr string, port uint16, pubkey string) (bool, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _addr = C.CString(addr)
 	defer C.free(unsafe.Pointer(_addr))
 	var _port = C.uint16_t(port)
@@ -1172,6 +1276,13 @@ func (this *Tox) AddTcpRelay(addr string, port uint16, pubkey string) (bool, err
 func (this *Tox) IsConnected() int {
 	r := C.tox_self_get_connection_status(this.toxcore)
 	return int(r)
+}
+
+func (this *Tox) beforeCallback(args ...interface{}) {
+	this.unlock()
+}
+func (this *Tox) afterCallback(args ...interface{}) {
+	this.lock()
 }
 
 ////////////

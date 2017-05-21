@@ -29,6 +29,7 @@ type ToxOptions struct {
 	Savedata_type int
 	Savedata_data []byte
 	Tcp_port      uint16
+	ThreadSafe    bool
 }
 
 func NewToxOptions() *ToxOptions {

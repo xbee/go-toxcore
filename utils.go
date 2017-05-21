@@ -96,3 +96,15 @@ func (this *Tox) LoadSavedata(fname string) ([]byte, error) {
 func LoadSavedata(fname string) ([]byte, error) {
 	return ioutil.ReadFile(fname)
 }
+
+func ConnStatusString(status int) (s string) {
+	switch status {
+	case CONNECTION_NONE:
+		s = "CONNECTION_NONE"
+	case CONNECTION_TCP:
+		s = "CONNECTION_TCP"
+	case CONNECTION_UDP:
+		s = "CONNECTION_UDP"
+	}
+	return
+}

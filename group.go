@@ -65,6 +65,8 @@ func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.TOX_CONFERENCE
 	for cbfni, ud := range this.cb_group_invites {
 		cbfn := *(*cb_group_invite_ftype)(cbfni)
 		data := C.GoBytes((unsafe.Pointer)(a2), C.int(a3))
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, uint32(a0), uint8(a1), data, ud)
 	}
 }
@@ -92,12 +94,16 @@ func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, mty
 		for cbfni, ud := range this.cb_group_messages {
 			cbfn := *(*cb_group_message_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
+			this.beforeCallback()
+			defer this.afterCallback()
 			cbfn(this, int(a0), int(a1), message, ud)
 		}
 	} else {
 		for cbfni, ud := range this.cb_group_actions {
 			cbfn := *(*cb_group_action_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
+			this.beforeCallback()
+			defer this.afterCallback()
 			cbfn(this, int(a0), int(a1), message, ud)
 		}
 	}
@@ -161,6 +167,8 @@ func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 *C
 	for cbfni, ud := range this.cb_group_titles {
 		cbfn := *(*cb_group_title_ftype)(cbfni)
 		title := C.GoStringN((*C.char)((unsafe.Pointer)(a2)), C.int(a3))
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, int(a0), int(a1), title, ud)
 	}
 }
@@ -186,6 +194,8 @@ func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32
 	var this = cbUserDatas.get(m)
 	for cbfni, ud := range this.cb_group_namelist_changes {
 		cbfn := *(*cb_group_namelist_change_ftype)(cbfni)
+		this.beforeCallback()
+		defer this.afterCallback()
 		cbfn(this, int(a0), int(a1), uint8(a2), ud)
 	}
 }
@@ -207,6 +217,8 @@ func (this *Tox) CallbackGroupNameListChangeAdd(cbfn cb_group_namelist_change_ft
 }
 
 func (this *Tox) AddGroupChat() (int, error) {
+	this.lock()
+	defer this.unlock()
 	r := C.tox_conference_new(this.toxcore, nil)
 	if int(r) == -1 {
 		return int(r), errors.New("add group chat failed")
@@ -215,6 +227,9 @@ func (this *Tox) AddGroupChat() (int, error) {
 }
 
 func (this *Tox) DelGroupChat(groupNumber int) (int, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _gn = C.uint32_t(groupNumber)
 
 	r := C.tox_conference_delete(this.toxcore, _gn, nil)
@@ -255,6 +270,9 @@ func (this *Tox) GroupPeerPubkey(groupNumber int, peerNumber int) (string, error
 }
 
 func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _fn = C.uint32_t(friendNumber)
 	var _gn = C.uint32_t(groupNumber)
 
@@ -274,6 +292,9 @@ func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error)
 }
 
 func (this *Tox) JoinGroupChat(friendNumber uint32, data []byte) (int, error) {
+	this.lock()
+	defer this.unlock()
+
 	if data == nil || len(data) < 10 {
 		return -1, errors.New("invalid data")
 	}
@@ -290,6 +311,9 @@ func (this *Tox) JoinGroupChat(friendNumber uint32, data []byte) (int, error) {
 }
 
 func (this *Tox) GroupActionSend(groupNumber int, action string) (int, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _gn = C.uint32_t(groupNumber)
 	var _action = C.CString(action)
 	defer C.free(unsafe.Pointer(_action))
@@ -305,6 +329,9 @@ func (this *Tox) GroupActionSend(groupNumber int, action string) (int, error) {
 }
 
 func (this *Tox) GroupMessageSend(groupNumber int, message string) (int, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _gn = C.uint32_t(groupNumber)
 	var _message = C.CString(message)
 	defer C.free(unsafe.Pointer(_message))
@@ -320,6 +347,9 @@ func (this *Tox) GroupMessageSend(groupNumber int, message string) (int, error) 
 }
 
 func (this *Tox) GroupSetTitle(groupNumber int, title string) (int, error) {
+	this.lock()
+	defer this.unlock()
+
 	var _gn = C.uint32_t(groupNumber)
 	var _title = C.CString(title)
 	defer C.free(unsafe.Pointer(_title))
