@@ -41,12 +41,12 @@ static inline void fixnousetoxgroup() {
 
 */
 import "C"
-import "unsafe"
-
 import (
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"strings"
+	"unsafe"
 )
 
 // group callback type
@@ -66,8 +66,8 @@ func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.TOX_CONFERENCE
 		cbfn := *(*cb_group_invite_ftype)(cbfni)
 		data := C.GoBytes((unsafe.Pointer)(a2), C.int(a3))
 		this.beforeCallback()
-		defer this.afterCallback()
 		cbfn(this, uint32(a0), uint8(a1), data, ud)
+		this.afterCallback()
 	}
 }
 
@@ -95,16 +95,16 @@ func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, mty
 			cbfn := *(*cb_group_message_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
 			this.beforeCallback()
-			defer this.afterCallback()
 			cbfn(this, int(a0), int(a1), message, ud)
+			this.afterCallback()
 		}
 	} else {
 		for cbfni, ud := range this.cb_group_actions {
 			cbfn := *(*cb_group_action_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
 			this.beforeCallback()
-			defer this.afterCallback()
 			cbfn(this, int(a0), int(a1), message, ud)
+			this.afterCallback()
 		}
 	}
 }
@@ -168,8 +168,8 @@ func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 *C
 		cbfn := *(*cb_group_title_ftype)(cbfni)
 		title := C.GoStringN((*C.char)((unsafe.Pointer)(a2)), C.int(a3))
 		this.beforeCallback()
-		defer this.afterCallback()
 		cbfn(this, int(a0), int(a1), title, ud)
+		this.afterCallback()
 	}
 }
 
@@ -195,8 +195,8 @@ func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32
 	for cbfni, ud := range this.cb_group_namelist_changes {
 		cbfn := *(*cb_group_namelist_change_ftype)(cbfni)
 		this.beforeCallback()
-		defer this.afterCallback()
 		cbfn(this, int(a0), int(a1), uint8(a2), ud)
+		this.afterCallback()
 	}
 }
 
@@ -219,6 +219,7 @@ func (this *Tox) CallbackGroupNameListChangeAdd(cbfn cb_group_namelist_change_ft
 func (this *Tox) AddGroupChat() (int, error) {
 	this.lock()
 	defer this.unlock()
+
 	r := C.tox_conference_new(this.toxcore, nil)
 	if int(r) == -1 {
 		return int(r), errors.New("add group chat failed")
@@ -231,10 +232,10 @@ func (this *Tox) DelGroupChat(groupNumber int) (int, error) {
 	defer this.unlock()
 
 	var _gn = C.uint32_t(groupNumber)
-
-	r := C.tox_conference_delete(this.toxcore, _gn, nil)
+	var cerr C.TOX_ERR_CONFERENCE_DELETE
+	r := C.tox_conference_delete(this.toxcore, _gn, &cerr)
 	if bool(r) == false {
-		return 1, errors.New("delete group chat failed")
+		return 1, errors.New(fmt.Sprintf("delete group chat failed:%d", int(cerr)))
 	}
 	return 0, nil
 }

@@ -319,12 +319,18 @@ func (this *ToxAV) CallbackVideoReceiveFrame(cbfn cb_video_receive_frame_ftype, 
 // toxav_join_av_groupchat
 // toxav_group_send_audio
 
+func (this *Tox) AddAVGroupChat() int {
+	r := C.toxav_add_av_groupchat(this.toxcore, nil, nil)
+	return int(r)
+}
+
 func (this *Tox) JoinAVGroupChat(friendNumber uint32, data []byte) (int, error) {
 	var _fn = C.int32_t(friendNumber)
 	var _data = (*C.char)((unsafe.Pointer)(&data[0]))
 	var length = len(data)
 	var _length = C.uint16_t(length)
 
+	// TODO nil => real
 	r := C.toxav_join_av_groupchat(this.toxcore, _fn, char2uint8(_data), _length, nil, nil)
 	if int(r) == -1 {
 		return int(r), errors.New("join av group chat failed")
