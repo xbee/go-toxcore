@@ -1164,16 +1164,13 @@ func (this *Tox) FriendSendLosslessPacket(friendNumber uint32, data string) erro
 
 // tox_callback_avatar_**
 
-func (this *Tox) Hash(hash string, data string, datalen uint32) (bool, error) {
-	var _hash = C.CString(hash)
-	defer C.free(unsafe.Pointer(_hash))
-	var _data = C.CString(data)
-	defer C.free(unsafe.Pointer(_data))
+func (this *Tox) Hash(data string, datalen uint32) (string, bool, error) {
+	_data := []byte(data)
+	_hash := make([]byte, C.TOX_HASH_LENGTH)
 	var _datalen = C.size_t(datalen)
 
-	r := C.tox_hash(char2uint8(_hash), char2uint8(_data), _datalen)
-	hash = C.GoString(_hash)
-	return bool(r), nil
+	r := C.tox_hash((*C.uint8_t)(&_hash[0]), (*C.uint8_t)(&_data[0]), _datalen)
+	return string(_hash), bool(r), nil
 }
 
 // tox_callback_file_***
