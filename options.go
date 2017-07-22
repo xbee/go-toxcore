@@ -53,7 +53,7 @@ func (this *ToxOptions) toCToxOptions() *C.struct_Tox_Options {
 	toxopts.udp_enabled = (C._Bool)(this.Udp_enabled)
 
 	if this.Savedata_data != nil {
-		toxopts.savedata_data = pointer2uint8(C.malloc(C.size_t(len(this.Savedata_data))))
+		toxopts.savedata_data = (*C.uint8_t)(C.malloc(C.size_t(len(this.Savedata_data))))
 		C.memcpy(unsafe.Pointer(toxopts.savedata_data),
 			unsafe.Pointer(&this.Savedata_data[0]), C.size_t(len(this.Savedata_data)))
 		toxopts.savedata_length = C.size_t(len(this.Savedata_data))

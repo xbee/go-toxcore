@@ -242,7 +242,7 @@ func (this *ToxAV) VideoSendFrame(friendNumber uint32, width uint16, height uint
 		this.in_image = C.vpx_img_alloc(nil, C.VPX_IMG_FMT_I420, C.uint(this.in_width), C.uint(this.in_height), 1)
 	}
 
-	C.rgb_to_i420(bytes2uchar(data), this.in_image)
+	C.rgb_to_i420((*C.uchar)(unsafe.Pointer(&data[0])), this.in_image)
 
 	var cerr C.TOXAV_ERR_SEND_FRAME
 	r := C.toxav_video_send_frame(this.toxav, C.uint32_t(friendNumber), C.uint16_t(width), C.uint16_t(height),
@@ -261,7 +261,7 @@ func callbackAudioReceiveFrameWrapperForC(m *C.ToxAV, friendNumber C.uint32_t, p
 	var this = cbAVUserDatas.get(m)
 	if this.cb_audio_receive_frame != nil {
 		length := sampleCount * C.size_t(channels) * 2
-		pcm_p := unsafe.Pointer(short2char(pcm))
+		pcm_p := unsafe.Pointer(pcm)
 		pcm_b := C.GoBytes(pcm_p, C.int(length))
 		this.cb_audio_receive_frame(this, uint32(friendNumber), pcm_b, int(sampleCount), int(channels), int(samplingRate), this.cb_audio_receive_frame_user_data)
 	}
@@ -296,7 +296,7 @@ func callbackVideoReceiveFrameWrapperForC(m *C.ToxAV, friendNumber C.uint32_t, w
 		}
 
 		out := unsafe.Pointer(&(this.out_image[0]))
-		C.i420_to_rgb(C.int(width), C.int(height), y, u, v, C.int(ystride), C.int(ustride), C.int(vstride), pointer2uchar(out))
+		C.i420_to_rgb(C.int(width), C.int(height), y, u, v, C.int(ystride), C.int(ustride), C.int(vstride), (*C.uchar)(out))
 
 		this.cb_video_receive_frame(this, uint32(friendNumber), uint16(width), uint16(height), this.out_image, this.cb_video_receive_frame_user_data)
 
@@ -326,12 +326,12 @@ func (this *Tox) AddAVGroupChat() int {
 
 func (this *Tox) JoinAVGroupChat(friendNumber uint32, data []byte) (int, error) {
 	var _fn = C.int32_t(friendNumber)
-	var _data = (*C.char)((unsafe.Pointer)(&data[0]))
+	var _data = (*C.uint8_t)((unsafe.Pointer)(&data[0]))
 	var length = len(data)
 	var _length = C.uint16_t(length)
 
 	// TODO nil => real
-	r := C.toxav_join_av_groupchat(this.toxcore, _fn, char2uint8(_data), _length, nil, nil)
+	r := C.toxav_join_av_groupchat(this.toxcore, _fn, _data, _length, nil, nil)
 	if int(r) == -1 {
 		return int(r), errors.New("join av group chat failed")
 	}
