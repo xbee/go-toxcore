@@ -1,6 +1,7 @@
 package tox
 
 /*
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <tox/tox.h>
@@ -51,11 +52,11 @@ import (
 
 // group callback type
 type cb_group_invite_ftype func(this *Tox, friendNumber uint32, itype uint8, data []byte, userData interface{})
-type cb_group_message_ftype func(this *Tox, groupNumber int, peerNumber int, message string, userData interface{})
+type cb_group_message_ftype func(this *Tox, groupNumber uint32, peerNumber int, message string, userData interface{})
 
-type cb_group_action_ftype func(this *Tox, groupNumber int, peerNumber int, action string, userData interface{})
-type cb_group_title_ftype func(this *Tox, groupNumber int, peerNumber int, title string, userData interface{})
-type cb_group_namelist_change_ftype func(this *Tox, groupNumber int, peerNumber int, change uint8, userData interface{})
+type cb_group_action_ftype func(this *Tox, groupNumber uint32, peerNumber int, action string, userData interface{})
+type cb_group_title_ftype func(this *Tox, groupNumber uint32, peerNumber int, title string, userData interface{})
+type cb_group_namelist_change_ftype func(this *Tox, groupNumber uint32, peerNumber int, change uint8, userData interface{})
 
 // tox_callback_group_***
 
@@ -95,7 +96,7 @@ func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, mty
 			cbfn := *(*cb_group_message_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
 			this.beforeCallback()
-			cbfn(this, int(a0), int(a1), message, ud)
+			cbfn(this, uint32(a0), int(a1), message, ud)
 			this.afterCallback()
 		}
 	} else {
@@ -103,7 +104,7 @@ func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, mty
 			cbfn := *(*cb_group_action_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
 			this.beforeCallback()
-			cbfn(this, int(a0), int(a1), message, ud)
+			cbfn(this, uint32(a0), int(a1), message, ud)
 			this.afterCallback()
 		}
 	}
@@ -168,7 +169,7 @@ func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 *C
 		cbfn := *(*cb_group_title_ftype)(cbfni)
 		title := C.GoStringN((*C.char)((unsafe.Pointer)(a2)), C.int(a3))
 		this.beforeCallback()
-		cbfn(this, int(a0), int(a1), title, ud)
+		cbfn(this, uint32(a0), int(a1), title, ud)
 		this.afterCallback()
 	}
 }
@@ -195,7 +196,7 @@ func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32
 	for cbfni, ud := range this.cb_group_namelist_changes {
 		cbfn := *(*cb_group_namelist_change_ftype)(cbfni)
 		this.beforeCallback()
-		cbfn(this, int(a0), int(a1), uint8(a2), ud)
+		cbfn(this, uint32(a0), int(a1), uint8(a2), ud)
 		this.afterCallback()
 	}
 }
@@ -216,18 +217,18 @@ func (this *Tox) CallbackGroupNameListChangeAdd(cbfn cb_group_namelist_change_ft
 	C.cb_group_namelist_change_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-func (this *Tox) AddGroupChat() (int, error) {
+func (this *Tox) AddGroupChat() (uint32, error) {
 	this.lock()
 	defer this.unlock()
 
 	r := C.tox_conference_new(this.toxcore, nil)
-	if int(r) == -1 {
-		return int(r), errors.New("add group chat failed")
+	if r == C.UINT32_MAX {
+		return uint32(r), errors.New("add group chat failed")
 	}
-	return int(r), nil
+	return uint32(r), nil
 }
 
-func (this *Tox) DelGroupChat(groupNumber int) (int, error) {
+func (this *Tox) DelGroupChat(groupNumber uint32) (int, error) {
 	this.lock()
 	defer this.unlock()
 
@@ -240,7 +241,7 @@ func (this *Tox) DelGroupChat(groupNumber int) (int, error) {
 	return 0, nil
 }
 
-func (this *Tox) GroupPeerName(groupNumber int, peerNumber int) (string, error) {
+func (this *Tox) GroupPeerName(groupNumber uint32, peerNumber uint32) (string, error) {
 	var _gn = C.uint32_t(groupNumber)
 	var _pn = C.uint32_t(peerNumber)
 	var _name[MAX_NAME_LENGTH] byte
@@ -253,7 +254,7 @@ func (this *Tox) GroupPeerName(groupNumber int, peerNumber int) (string, error) 
 	return string(_name[:]), nil
 }
 
-func (this *Tox) GroupPeerPubkey(groupNumber int, peerNumber int) (string, error) {
+func (this *Tox) GroupPeerPubkey(groupNumber uint32, peerNumber int) (string, error) {
 	var _gn = C.uint32_t(groupNumber)
 	var _pn = C.uint32_t(peerNumber)
 	var _pubkey[PUBLIC_KEY_SIZE] byte
@@ -267,7 +268,7 @@ func (this *Tox) GroupPeerPubkey(groupNumber int, peerNumber int) (string, error
 	return pubkey, nil
 }
 
-func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error) {
+func (this *Tox) InviteFriend(friendNumber uint32, groupNumber uint32) (int, error) {
 	this.lock()
 	defer this.unlock()
 
@@ -289,14 +290,14 @@ func (this *Tox) InviteFriend(friendNumber uint32, groupNumber int) (int, error)
 	return 1, nil
 }
 
-func (this *Tox) JoinGroupChat(friendNumber uint32, data []byte) (int, error) {
+func (this *Tox) JoinGroupChat(friendNumber uint32, data []byte) (uint32, error) {
 	this.lock()
 	defer this.unlock()
 
 	var length = len(data)
 
 	if data == nil || length < 10 {
-		return -1, errors.New("invalid data")
+		return 0, errors.New("invalid data")
 	}
 
 	var _fn = C.uint32_t(friendNumber)
@@ -304,12 +305,12 @@ func (this *Tox) JoinGroupChat(friendNumber uint32, data []byte) (int, error) {
 
 	r := C.tox_conference_join(this.toxcore, _fn, (*C.uint8_t)(&data[0]), _length, nil)
 	if r == C.UINT32_MAX {
-		return int(r), errors.New("join group chat failed")
+		return uint32(r), errors.New("join group chat failed")
 	}
-	return int(r), nil
+	return uint32(r), nil
 }
 
-func (this *Tox) GroupActionSend(groupNumber int, action string) (int, error) {
+func (this *Tox) GroupActionSend(groupNumber uint32, action string) (int, error) {
 	this.lock()
 	defer this.unlock()
 
@@ -326,7 +327,7 @@ func (this *Tox) GroupActionSend(groupNumber int, action string) (int, error) {
 	return 1, nil
 }
 
-func (this *Tox) GroupMessageSend(groupNumber int, message string) (int, error) {
+func (this *Tox) GroupMessageSend(groupNumber uint32, message string) (int, error) {
 	this.lock()
 	defer this.unlock()
 
@@ -343,7 +344,7 @@ func (this *Tox) GroupMessageSend(groupNumber int, message string) (int, error) 
 	return 1, nil
 }
 
-func (this *Tox) GroupSetTitle(groupNumber int, title string) (int, error) {
+func (this *Tox) GroupSetTitle(groupNumber uint32, title string) (int, error) {
 	this.lock()
 	defer this.unlock()
 
@@ -361,7 +362,7 @@ func (this *Tox) GroupSetTitle(groupNumber int, title string) (int, error) {
 	return 1, nil
 }
 
-func (this *Tox) GroupGetTitle(groupNumber int) (string, error) {
+func (this *Tox) GroupGetTitle(groupNumber uint32) (string, error) {
 	var _gn = C.uint32_t(groupNumber)
 	var _title[MAX_NAME_LENGTH] byte
 
@@ -372,7 +373,7 @@ func (this *Tox) GroupGetTitle(groupNumber int) (string, error) {
 	return string(_title[:]), nil
 }
 
-func (this *Tox) GroupPeerNumberIsOurs(groupNumber int, peerNumber uint32) bool {
+func (this *Tox) GroupPeerNumberIsOurs(groupNumber uint32, peerNumber uint32) bool {
 	var _gn = C.uint32_t(groupNumber)
 	var _pn = C.uint32_t(peerNumber)
 
@@ -380,14 +381,14 @@ func (this *Tox) GroupPeerNumberIsOurs(groupNumber int, peerNumber uint32) bool 
 	return bool(r)
 }
 
-func (this *Tox) GroupNumberPeers(groupNumber int) int {
+func (this *Tox) GroupNumberPeers(groupNumber uint32) uint32 {
 	var _gn = C.uint32_t(groupNumber)
 
 	r := C.tox_conference_peer_count(this.toxcore, _gn, nil)
-	return int(r)
+	return uint32(r)
 }
 
-func (this *Tox) GroupGetNames(groupNumber int) []string {
+func (this *Tox) GroupGetNames(groupNumber uint32) []string {
 	peerCount := this.GroupNumberPeers(groupNumber)
 	vec := make([]string, peerCount)
 	if peerCount == 0 {
@@ -399,7 +400,7 @@ func (this *Tox) GroupGetNames(groupNumber int) []string {
 	// clengths := (*C.uint16_t)(&lengths[0])
 	// cnames := (*[MAX_NAME_LENGTH]C.uint8_t)((unsafe.Pointer)(&names[0]))
 
-	for idx := 0; idx < peerCount; idx++ {
+	for idx := uint32(0); idx < peerCount; idx++ {
 		pname, err := this.GroupPeerName(groupNumber, idx)
 		if err != nil {
 			return vec[0:0]
@@ -423,34 +424,32 @@ func (this *Tox) GroupGetNames(groupNumber int) []string {
 	return vec
 }
 
-func (this *Tox) GroupGetPeerPubkeys(groupNumber int) []string {
+func (this *Tox) GroupGetPeerPubkeys(groupNumber uint32) []string {
 	vec := make([]string, 0)
 	peerCount := this.GroupNumberPeers(groupNumber)
-	maxcnt := 65536
-	for peerNumber := 0; peerNumber < maxcnt; peerNumber++ {
+	for peerNumber := 0; peerNumber < C.UINT32_MAX; peerNumber++ {
 		pubkey, err := this.GroupPeerPubkey(groupNumber, peerNumber)
 		if err != nil {
 		} else {
 			vec = append(vec, pubkey)
 		}
-		if len(vec) >= peerCount {
+		if uint32(len(vec)) >= peerCount {
 			break
 		}
 	}
 	return vec
 }
 
-func (this *Tox) GroupGetPeers(groupNumber int) map[int]string {
+func (this *Tox) GroupGetPeers(groupNumber uint32) map[int]string {
 	vec := make(map[int]string, 0)
 	peerCount := this.GroupNumberPeers(groupNumber)
-	maxcnt := 65536
-	for peerNumber := 0; peerNumber < maxcnt; peerNumber++ {
+	for peerNumber := 0; peerNumber < C.UINT32_MAX; peerNumber++ {
 		pubkey, err := this.GroupPeerPubkey(groupNumber, peerNumber)
 		if err != nil {
 		} else {
 			vec[peerNumber] = pubkey
 		}
-		if len(vec) >= peerCount {
+		if uint32(len(vec)) >= peerCount {
 			break
 		}
 	}
