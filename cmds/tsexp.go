@@ -25,11 +25,12 @@ func printHelp() {
 
 func main() {
 	// flag.StringVar(&tsfile, "tsfile", "", "tox save data file")
-	flag.StringVar(&pass, "pass", "", "tox save data password")
+	flag.StringVar(&pass, "pass", pass, "tox save data password")
 	flag.Parse()
 	// log.Println(flag.Args())
 	if len(flag.Args()) < 1 {
 		printHelp()
+		flag.Usage()
 		return
 	}
 	tsfile = flag.Arg(0)
