@@ -10,6 +10,10 @@ func toxerr(errno interface{}) error {
 	return errors.New(fmt.Sprintf("toxcore error: %v", errno))
 }
 
+func toxerrf(f string, args ...interface{}) error {
+	return errors.New(fmt.Sprintf(f, args...))
+}
+
 var toxdebug = false
 
 func SetDebug(debug bool) {

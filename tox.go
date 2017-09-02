@@ -170,19 +170,19 @@ type Tox struct {
 	cb_friend_lossless_packets   map[unsafe.Pointer]interface{}
 	cb_self_connection_statuss   map[unsafe.Pointer]interface{}
 
-	cb_group_invites          map[unsafe.Pointer]interface{}
-	cb_group_messages         map[unsafe.Pointer]interface{}
-	cb_group_actions          map[unsafe.Pointer]interface{}
-	cb_group_titles           map[unsafe.Pointer]interface{}
-	cb_group_namelist_changes map[unsafe.Pointer]interface{}
+	cb_conference_invites          map[unsafe.Pointer]interface{}
+	cb_conference_messages         map[unsafe.Pointer]interface{}
+	cb_conference_actions          map[unsafe.Pointer]interface{}
+	cb_conference_titles           map[unsafe.Pointer]interface{}
+	cb_conference_namelist_changes map[unsafe.Pointer]interface{}
 
 	cb_file_recv_controls  map[unsafe.Pointer]interface{}
 	cb_file_recvs          map[unsafe.Pointer]interface{}
 	cb_file_recv_chunks    map[unsafe.Pointer]interface{}
 	cb_file_chunk_requests map[unsafe.Pointer]interface{}
 
-	cb_iterate_data         interface{}
-	cb_group_message_setted bool
+	cb_iterate_data              interface{}
+	cb_conference_message_setted bool
 }
 
 var cbUserDatas = newUserData()
@@ -641,11 +641,11 @@ func NewTox(opt *ToxOptions) *Tox {
 	tox.cb_friend_lossless_packets = make(map[unsafe.Pointer]interface{})
 	tox.cb_self_connection_statuss = make(map[unsafe.Pointer]interface{})
 
-	tox.cb_group_invites = make(map[unsafe.Pointer]interface{})
-	tox.cb_group_messages = make(map[unsafe.Pointer]interface{})
-	tox.cb_group_actions = make(map[unsafe.Pointer]interface{})
-	tox.cb_group_titles = make(map[unsafe.Pointer]interface{})
-	tox.cb_group_namelist_changes = make(map[unsafe.Pointer]interface{})
+	tox.cb_conference_invites = make(map[unsafe.Pointer]interface{})
+	tox.cb_conference_messages = make(map[unsafe.Pointer]interface{})
+	tox.cb_conference_actions = make(map[unsafe.Pointer]interface{})
+	tox.cb_conference_titles = make(map[unsafe.Pointer]interface{})
+	tox.cb_conference_namelist_changes = make(map[unsafe.Pointer]interface{})
 
 	tox.cb_file_recv_controls = make(map[unsafe.Pointer]interface{})
 	tox.cb_file_recvs = make(map[unsafe.Pointer]interface{})
@@ -1094,7 +1094,7 @@ func (this *Tox) SelfSetNospam(nospam uint32) {
 }
 
 func (this *Tox) SelfGetPublicKey() string {
-	var _pubkey[PUBLIC_KEY_SIZE] byte
+	var _pubkey [PUBLIC_KEY_SIZE]byte
 
 	C.tox_self_get_public_key(this.toxcore, (*C.uint8_t)(&_pubkey[0]))
 
@@ -1102,7 +1102,7 @@ func (this *Tox) SelfGetPublicKey() string {
 }
 
 func (this *Tox) SelfGetSecretKey() string {
-	var _seckey[SECRET_KEY_SIZE] byte
+	var _seckey [SECRET_KEY_SIZE]byte
 
 	C.tox_self_get_secret_key(this.toxcore, (*C.uint8_t)(&_seckey[0]))
 

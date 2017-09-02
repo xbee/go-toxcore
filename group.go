@@ -6,38 +6,38 @@ package tox
 #include <string.h>
 #include <tox/tox.h>
 
-void callbackGroupInviteWrapperForC(Tox*, uint32_t, TOX_CONFERENCE_TYPE, uint8_t *, size_t, void *);
-typedef void (*cb_group_invite_ftype)(Tox *, uint32_t, TOX_CONFERENCE_TYPE, const uint8_t *, size_t, void *);
-static void cb_group_invite_wrapper_for_go(Tox *m, cb_group_invite_ftype fn, void *userdata)
+void callbackConferenceInviteWrapperForC(Tox*, uint32_t, TOX_CONFERENCE_TYPE, uint8_t *, size_t, void *);
+typedef void (*cb_conference_invite_ftype)(Tox *, uint32_t, TOX_CONFERENCE_TYPE, const uint8_t *, size_t, void *);
+static void cb_conference_invite_wrapper_for_go(Tox *m, cb_conference_invite_ftype fn, void *userdata)
 { tox_callback_conference_invite(m, fn); }
 
-void callbackGroupMessageWrapperForC(Tox *, uint32_t, uint32_t, TOX_MESSAGE_TYPE, int8_t *, size_t, void *);
-typedef void (*cb_group_message_ftype)(Tox *, uint32_t, uint32_t, TOX_MESSAGE_TYPE, const uint8_t *, size_t, void *);
-static void cb_group_message_wrapper_for_go(Tox *m, cb_group_message_ftype fn, void *userdata)
+void callbackConferenceMessageWrapperForC(Tox *, uint32_t, uint32_t, TOX_MESSAGE_TYPE, int8_t *, size_t, void *);
+typedef void (*cb_conference_message_ftype)(Tox *, uint32_t, uint32_t, TOX_MESSAGE_TYPE, const uint8_t *, size_t, void *);
+static void cb_conference_message_wrapper_for_go(Tox *m, cb_conference_message_ftype fn, void *userdata)
 { tox_callback_conference_message(m, fn); }
 
-// void callbackGroupActionWrapperForC(Tox*, uint32_t, uint32_t, uint8_t*, size_t, void*);
-// typedef void (*cb_group_action_ftype)(Tox*, uint32_t, uint32_t, const uint8_t*, size_t, void*);
-// static void cb_group_action_wrapper_for_go(Tox *m, cb_group_action_ftype fn, void *userdata)
+// void callbackConferenceActionWrapperForC(Tox*, uint32_t, uint32_t, uint8_t*, size_t, void*);
+// typedef void (*cb_conference_action_ftype)(Tox*, uint32_t, uint32_t, const uint8_t*, size_t, void*);
+// static void cb_conference_action_wrapper_for_go(Tox *m, cb_conference_action_ftype fn, void *userdata)
 // { tox_callback_conference_message(m, fn); }
 
-void callbackGroupTitleWrapperForC(Tox*, uint32_t, uint32_t, uint8_t*, size_t, void*);
-typedef void (*cb_group_title_ftype)(Tox*, uint32_t, uint32_t, const uint8_t*, size_t, void*);
-static void cb_group_title_wrapper_for_go(Tox *m, cb_group_title_ftype fn, void *userdata)
+void callbackConferenceTitleWrapperForC(Tox*, uint32_t, uint32_t, uint8_t*, size_t, void*);
+typedef void (*cb_conference_title_ftype)(Tox*, uint32_t, uint32_t, const uint8_t*, size_t, void*);
+static void cb_conference_title_wrapper_for_go(Tox *m, cb_conference_title_ftype fn, void *userdata)
 { tox_callback_conference_title(m, fn); }
 
-void callbackGroupNameListChangeWrapperForC(Tox*, uint32_t, uint32_t, TOX_CONFERENCE_STATE_CHANGE, void*);
-typedef void (*cb_group_namelist_change_ftype)(Tox*, uint32_t, uint32_t, TOX_CONFERENCE_STATE_CHANGE, void*);
-static void cb_group_namelist_change_wrapper_for_go(Tox *m, cb_group_namelist_change_ftype fn, void *userdata)
+void callbackConferenceNameListChangeWrapperForC(Tox*, uint32_t, uint32_t, TOX_CONFERENCE_STATE_CHANGE, void*);
+typedef void (*cb_conference_namelist_change_ftype)(Tox*, uint32_t, uint32_t, TOX_CONFERENCE_STATE_CHANGE, void*);
+static void cb_conference_namelist_change_wrapper_for_go(Tox *m, cb_conference_namelist_change_ftype fn, void *userdata)
 { tox_callback_conference_namelist_change(m, fn); }
 
 // fix nouse compile warning
 static inline void fixnousetoxgroup() {
-    cb_group_invite_wrapper_for_go(NULL, NULL, NULL);
-    cb_group_message_wrapper_for_go(NULL, NULL, NULL);
-    // cb_group_action_wrapper_for_go(NULL, NULL, NULL);
-    cb_group_title_wrapper_for_go(NULL, NULL, NULL);
-    cb_group_namelist_change_wrapper_for_go(NULL, NULL, NULL);
+    cb_conference_invite_wrapper_for_go(NULL, NULL, NULL);
+    cb_conference_message_wrapper_for_go(NULL, NULL, NULL);
+    // cb_conference_action_wrapper_for_go(NULL, NULL, NULL);
+    cb_conference_title_wrapper_for_go(NULL, NULL, NULL);
+    cb_conference_namelist_change_wrapper_for_go(NULL, NULL, NULL);
 }
 
 */
@@ -45,26 +45,25 @@ import "C"
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"strings"
 	"unsafe"
 )
 
-// group callback type
-type cb_group_invite_ftype func(this *Tox, friendNumber uint32, itype uint8, data []byte, userData interface{})
-type cb_group_message_ftype func(this *Tox, groupNumber uint32, peerNumber int, message string, userData interface{})
+// conference callback type
+type cb_conference_invite_ftype func(this *Tox, friendNumber uint32, itype uint8, data []byte, userData interface{})
+type cb_conference_message_ftype func(this *Tox, groupNumber uint32, peerNumber uint32, message string, userData interface{})
 
-type cb_group_action_ftype func(this *Tox, groupNumber uint32, peerNumber int, action string, userData interface{})
-type cb_group_title_ftype func(this *Tox, groupNumber uint32, peerNumber int, title string, userData interface{})
-type cb_group_namelist_change_ftype func(this *Tox, groupNumber uint32, peerNumber int, change uint8, userData interface{})
+type cb_conference_action_ftype func(this *Tox, groupNumber uint32, peerNumber uint32, action string, userData interface{})
+type cb_conference_title_ftype func(this *Tox, groupNumber uint32, peerNumber uint32, title string, userData interface{})
+type cb_conference_namelist_change_ftype func(this *Tox, groupNumber uint32, peerNumber uint32, change uint8, userData interface{})
 
 // tox_callback_conference_***
 
-//export callbackGroupInviteWrapperForC
-func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.TOX_CONFERENCE_TYPE, a2 *C.uint8_t, a3 C.size_t, a4 unsafe.Pointer) {
+//export callbackConferenceInviteWrapperForC
+func callbackConferenceInviteWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.TOX_CONFERENCE_TYPE, a2 *C.uint8_t, a3 C.size_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	for cbfni, ud := range this.cb_group_invites {
-		cbfn := *(*cb_group_invite_ftype)(cbfni)
+	for cbfni, ud := range this.cb_conference_invites {
+		cbfn := *(*cb_conference_invite_ftype)(cbfni)
 		data := C.GoBytes((unsafe.Pointer)(a2), C.int(a3))
 		this.beforeCallback()
 		cbfn(this, uint32(a0), uint8(a1), data, ud)
@@ -72,158 +71,147 @@ func callbackGroupInviteWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.TOX_CONFERENCE
 	}
 }
 
-func (this *Tox) CallbackGroupInvite(cbfn cb_group_invite_ftype, userData interface{}) {
-	this.CallbackGroupInviteAdd(cbfn, userData)
+func (this *Tox) CallbackConferenceInvite(cbfn cb_conference_invite_ftype, userData interface{}) {
+	this.CallbackConferenceInviteAdd(cbfn, userData)
 }
-func (this *Tox) CallbackGroupInviteAdd(cbfn cb_group_invite_ftype, userData interface{}) {
+func (this *Tox) CallbackConferenceInviteAdd(cbfn cb_conference_invite_ftype, userData interface{}) {
 	cbfnp := (unsafe.Pointer)(&cbfn)
-	if _, ok := this.cb_group_invites[cbfnp]; ok {
+	if _, ok := this.cb_conference_invites[cbfnp]; ok {
 		return
 	}
-	this.cb_group_invites[cbfnp] = userData
+	this.cb_conference_invites[cbfnp] = userData
 
-	var _cbfn = (C.cb_group_invite_ftype)(C.callbackGroupInviteWrapperForC)
+	var _cbfn = (C.cb_conference_invite_ftype)(C.callbackConferenceInviteWrapperForC)
 	var _userData unsafe.Pointer = nil
 
-	C.cb_group_invite_wrapper_for_go(this.toxcore, _cbfn, _userData)
+	C.cb_conference_invite_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-//export callbackGroupMessageWrapperForC
-func callbackGroupMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, mtype C.TOX_MESSAGE_TYPE, a2 *C.int8_t, a3 C.size_t, a4 unsafe.Pointer) {
+//export callbackConferenceMessageWrapperForC
+func callbackConferenceMessageWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, mtype C.TOX_MESSAGE_TYPE, a2 *C.int8_t, a3 C.size_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
 	if int(mtype) == MESSAGE_TYPE_NORMAL {
-		for cbfni, ud := range this.cb_group_messages {
-			cbfn := *(*cb_group_message_ftype)(cbfni)
+		for cbfni, ud := range this.cb_conference_messages {
+			cbfn := *(*cb_conference_message_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
 			this.beforeCallback()
-			cbfn(this, uint32(a0), int(a1), message, ud)
+			cbfn(this, uint32(a0), uint32(a1), message, ud)
 			this.afterCallback()
 		}
 	} else {
-		for cbfni, ud := range this.cb_group_actions {
-			cbfn := *(*cb_group_action_ftype)(cbfni)
+		for cbfni, ud := range this.cb_conference_actions {
+			cbfn := *(*cb_conference_action_ftype)(cbfni)
 			message := C.GoStringN((*C.char)((*C.int8_t)(a2)), C.int(a3))
 			this.beforeCallback()
-			cbfn(this, uint32(a0), int(a1), message, ud)
+			cbfn(this, uint32(a0), uint32(a1), message, ud)
 			this.afterCallback()
 		}
 	}
 }
 
-func (this *Tox) CallbackGroupMessage(cbfn cb_group_message_ftype, userData interface{}) {
-	this.CallbackGroupMessageAdd(cbfn, userData)
+func (this *Tox) CallbackConferenceMessage(cbfn cb_conference_message_ftype, userData interface{}) {
+	this.CallbackConferenceMessageAdd(cbfn, userData)
 }
-func (this *Tox) CallbackGroupMessageAdd(cbfn cb_group_message_ftype, userData interface{}) {
+func (this *Tox) CallbackConferenceMessageAdd(cbfn cb_conference_message_ftype, userData interface{}) {
 	cbfnp := (unsafe.Pointer)(&cbfn)
-	if _, ok := this.cb_group_messages[cbfnp]; ok {
+	if _, ok := this.cb_conference_messages[cbfnp]; ok {
 		return
 	}
-	this.cb_group_messages[cbfnp] = userData
+	this.cb_conference_messages[cbfnp] = userData
 
-	if !this.cb_group_message_setted {
-		this.cb_group_message_setted = true
+	if !this.cb_conference_message_setted {
+		this.cb_conference_message_setted = true
 
-		var _cbfn = (C.cb_group_message_ftype)(C.callbackGroupMessageWrapperForC)
+		var _cbfn = (C.cb_conference_message_ftype)(C.callbackConferenceMessageWrapperForC)
 		var _userData unsafe.Pointer = nil
 
-		C.cb_group_message_wrapper_for_go(this.toxcore, _cbfn, _userData)
+		C.cb_conference_message_wrapper_for_go(this.toxcore, _cbfn, _userData)
 	}
 }
 
-/*
-//export callbackGroupActionWrapperForC
-func callbackGroupActionWrapperForC(m *C.Tox, a0 C.int, a1 C.int, a2 *C.uint8_t, a3 C.uint16_t, a4 unsafe.Pointer) {
-	var this = cbUserDatas.get(m)
-	if this.cb_group_action != nil {
-		action := C.GoStringN((*C.char)((unsafe.Pointer)(a2)), C.int(a3))
-		this.cb_group_action(this, int(a0), int(a1), action, this.cb_group_action_user_data)
-	}
+func (this *Tox) CallbackConferenceAction(cbfn cb_conference_action_ftype, userData interface{}) {
+	this.CallbackConferenceActionAdd(cbfn, userData)
 }
-*/
-
-func (this *Tox) CallbackGroupAction(cbfn cb_group_action_ftype, userData interface{}) {
-	this.CallbackGroupActionAdd(cbfn, userData)
-}
-func (this *Tox) CallbackGroupActionAdd(cbfn cb_group_action_ftype, userData interface{}) {
+func (this *Tox) CallbackConferenceActionAdd(cbfn cb_conference_action_ftype, userData interface{}) {
 	cbfnp := (unsafe.Pointer)(&cbfn)
-	if _, ok := this.cb_group_actions[cbfnp]; ok {
+	if _, ok := this.cb_conference_actions[cbfnp]; ok {
 		return
 	}
-	this.cb_group_actions[cbfnp] = userData
+	this.cb_conference_actions[cbfnp] = userData
 
-	if !this.cb_group_message_setted {
-		this.cb_group_message_setted = true
-		// var _cbfn = (C.cb_group_action_ftype)(C.callbackGroupActionWrapperForC)
-		var _cbfn = (C.cb_group_message_ftype)(C.callbackGroupMessageWrapperForC)
+	if !this.cb_conference_message_setted {
+		this.cb_conference_message_setted = true
+		var _cbfn = (C.cb_conference_message_ftype)(C.callbackConferenceMessageWrapperForC)
 		var _userData unsafe.Pointer = nil
 
-		C.cb_group_message_wrapper_for_go(this.toxcore, _cbfn, _userData)
-		// C.cb_group_action_wrapper_for_go(this.toxcore, _cbfn, _userData)
+		C.cb_conference_message_wrapper_for_go(this.toxcore, _cbfn, _userData)
 	}
 }
 
-//export callbackGroupTitleWrapperForC
-func callbackGroupTitleWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 *C.uint8_t, a3 C.size_t, a4 unsafe.Pointer) {
+//export callbackConferenceTitleWrapperForC
+func callbackConferenceTitleWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 *C.uint8_t, a3 C.size_t, a4 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	for cbfni, ud := range this.cb_group_titles {
-		cbfn := *(*cb_group_title_ftype)(cbfni)
+	for cbfni, ud := range this.cb_conference_titles {
+		cbfn := *(*cb_conference_title_ftype)(cbfni)
 		title := C.GoStringN((*C.char)((unsafe.Pointer)(a2)), C.int(a3))
 		this.beforeCallback()
-		cbfn(this, uint32(a0), int(a1), title, ud)
+		cbfn(this, uint32(a0), uint32(a1), title, ud)
 		this.afterCallback()
 	}
 }
 
-func (this *Tox) CallbackGroupTitle(cbfn cb_group_title_ftype, userData interface{}) {
-	this.CallbackGroupTitleAdd(cbfn, userData)
+func (this *Tox) CallbackConferenceTitle(cbfn cb_conference_title_ftype, userData interface{}) {
+	this.CallbackConferenceTitleAdd(cbfn, userData)
 }
-func (this *Tox) CallbackGroupTitleAdd(cbfn cb_group_title_ftype, userData interface{}) {
+func (this *Tox) CallbackConferenceTitleAdd(cbfn cb_conference_title_ftype, userData interface{}) {
 	cbfnp := (unsafe.Pointer)(&cbfn)
-	if _, ok := this.cb_group_titles[cbfnp]; ok {
+	if _, ok := this.cb_conference_titles[cbfnp]; ok {
 		return
 	}
-	this.cb_group_titles[cbfnp] = userData
+	this.cb_conference_titles[cbfnp] = userData
 
-	var _cbfn = (C.cb_group_title_ftype)(C.callbackGroupTitleWrapperForC)
+	var _cbfn = (C.cb_conference_title_ftype)(C.callbackConferenceTitleWrapperForC)
 	var _userData unsafe.Pointer = nil
 
-	C.cb_group_title_wrapper_for_go(this.toxcore, _cbfn, _userData)
+	C.cb_conference_title_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
-//export callbackGroupNameListChangeWrapperForC
-func callbackGroupNameListChangeWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 C.TOX_CONFERENCE_STATE_CHANGE, a3 unsafe.Pointer) {
+//export callbackConferenceNameListChangeWrapperForC
+func callbackConferenceNameListChangeWrapperForC(m *C.Tox, a0 C.uint32_t, a1 C.uint32_t, a2 C.TOX_CONFERENCE_STATE_CHANGE, a3 unsafe.Pointer) {
 	var this = cbUserDatas.get(m)
-	for cbfni, ud := range this.cb_group_namelist_changes {
-		cbfn := *(*cb_group_namelist_change_ftype)(cbfni)
+	for cbfni, ud := range this.cb_conference_namelist_changes {
+		cbfn := *(*cb_conference_namelist_change_ftype)(cbfni)
 		this.beforeCallback()
-		cbfn(this, uint32(a0), int(a1), uint8(a2), ud)
+		cbfn(this, uint32(a0), uint32(a1), uint8(a2), ud)
 		this.afterCallback()
 	}
 }
 
-func (this *Tox) CallbackGroupNameListChange(cbfn cb_group_namelist_change_ftype, userData interface{}) {
-	this.CallbackGroupNameListChangeAdd(cbfn, userData)
+func (this *Tox) CallbackConferenceNameListChange(cbfn cb_conference_namelist_change_ftype, userData interface{}) {
+	this.CallbackConferenceNameListChangeAdd(cbfn, userData)
 }
-func (this *Tox) CallbackGroupNameListChangeAdd(cbfn cb_group_namelist_change_ftype, userData interface{}) {
+func (this *Tox) CallbackConferenceNameListChangeAdd(cbfn cb_conference_namelist_change_ftype, userData interface{}) {
 	cbfnp := (unsafe.Pointer)(&cbfn)
-	if _, ok := this.cb_group_namelist_changes[cbfnp]; ok {
+	if _, ok := this.cb_conference_namelist_changes[cbfnp]; ok {
 		return
 	}
-	this.cb_group_namelist_changes[cbfnp] = userData
+	this.cb_conference_namelist_changes[cbfnp] = userData
 
-	var _cbfn = (C.cb_group_namelist_change_ftype)(C.callbackGroupNameListChangeWrapperForC)
+	var _cbfn = (C.cb_conference_namelist_change_ftype)(C.callbackConferenceNameListChangeWrapperForC)
 	var _userData unsafe.Pointer = nil
 
-	C.cb_group_namelist_change_wrapper_for_go(this.toxcore, _cbfn, _userData)
+	C.cb_conference_namelist_change_wrapper_for_go(this.toxcore, _cbfn, _userData)
 }
 
+// methods tox_conference_*
 func (this *Tox) ConferenceNew() (uint32, error) {
 	this.lock()
 	defer this.unlock()
 
-	r := C.tox_conference_new(this.toxcore, nil)
+	var cerr C.TOX_ERR_CONFERENCE_NEW
+	r := C.tox_conference_new(this.toxcore, &cerr)
 	if r == C.UINT32_MAX {
-		return uint32(r), errors.New("add group chat failed")
+		return uint32(r), toxerrf("add group chat failed: %d", cerr)
 	}
 	return uint32(r), nil
 }
@@ -236,7 +224,7 @@ func (this *Tox) ConferenceDelete(groupNumber uint32) (int, error) {
 	var cerr C.TOX_ERR_CONFERENCE_DELETE
 	r := C.tox_conference_delete(this.toxcore, _gn, &cerr)
 	if bool(r) == false {
-		return 1, errors.New(fmt.Sprintf("delete group chat failed:%d", int(cerr)))
+		return 1, toxerrf("delete group chat failed:%d", cerr)
 	}
 	return 0, nil
 }
@@ -246,9 +234,10 @@ func (this *Tox) ConferencePeerGetName(groupNumber uint32, peerNumber uint32) (s
 	var _pn = C.uint32_t(peerNumber)
 	var _name [MAX_NAME_LENGTH]byte
 
-	r := C.tox_conference_peer_get_name(this.toxcore, _gn, _pn, (*C.uint8_t)(&_name[0]), nil)
+	var cerr C.TOX_ERR_CONFERENCE_PEER_QUERY
+	r := C.tox_conference_peer_get_name(this.toxcore, _gn, _pn, (*C.uint8_t)(&_name[0]), &cerr)
 	if r == false {
-		return "", errors.New("get peer name failed")
+		return "", toxerrf("get peer name failed: %d", cerr)
 	}
 
 	return string(_name[:]), nil
@@ -259,9 +248,10 @@ func (this *Tox) ConferencePeerGetPublicKey(groupNumber uint32, peerNumber int) 
 	var _pn = C.uint32_t(peerNumber)
 	var _pubkey [PUBLIC_KEY_SIZE]byte
 
-	r := C.tox_conference_peer_get_public_key(this.toxcore, _gn, _pn, (*C.uint8_t)(&_pubkey[0]), nil)
+	var cerr C.TOX_ERR_CONFERENCE_PEER_QUERY
+	r := C.tox_conference_peer_get_public_key(this.toxcore, _gn, _pn, (*C.uint8_t)(&_pubkey[0]), &cerr)
 	if r == false {
-		return "", errors.New("get pubkey failed")
+		return "", toxerrf("get pubkey failed: %d", cerr)
 	}
 
 	pubkey := strings.ToUpper(hex.EncodeToString(_pubkey[:]))
@@ -280,12 +270,13 @@ func (this *Tox) ConferenceInvite(friendNumber uint32, groupNumber uint32) (int,
 	// and the call will return true, but only strange thing accurs
 	// so just precheck the friendNumber and then go
 	if !this.FriendExists(friendNumber) {
-		return -1, errors.New("friend not exists")
+		return -1, toxerrf("friend not exists: %d", friendNumber)
 	}
 
-	r := C.tox_conference_invite(this.toxcore, _fn, _gn, nil)
+	var cerr C.TOX_ERR_CONFERENCE_INVITE
+	r := C.tox_conference_invite(this.toxcore, _fn, _gn, &cerr)
 	if r == false {
-		return 0, toxerr("conference invite failed")
+		return 0, toxerrf("conference invite failed: %d", cerr)
 	}
 	return 1, nil
 }
@@ -303,31 +294,15 @@ func (this *Tox) ConferenceJoin(friendNumber uint32, data []byte) (uint32, error
 	var _fn = C.uint32_t(friendNumber)
 	var _length = C.size_t(length)
 
-	r := C.tox_conference_join(this.toxcore, _fn, (*C.uint8_t)(&data[0]), _length, nil)
+	var cerr C.TOX_ERR_CONFERENCE_JOIN
+	r := C.tox_conference_join(this.toxcore, _fn, (*C.uint8_t)(&data[0]), _length, &cerr)
 	if r == C.UINT32_MAX {
-		return uint32(r), errors.New("join group chat failed")
+		return uint32(r), toxerrf("join group chat failed: %d", cerr)
 	}
 	return uint32(r), nil
 }
 
-func (this *Tox) ConferenceSendAction(groupNumber uint32, action string) (int, error) {
-	this.lock()
-	defer this.unlock()
-
-	var _gn = C.uint32_t(groupNumber)
-	var _action = []byte(action)
-	var _length = C.size_t(len(action))
-
-	var cerr C.TOX_ERR_CONFERENCE_SEND_MESSAGE
-	var mtype C.TOX_MESSAGE_TYPE = C.TOX_MESSAGE_TYPE_ACTION
-	r := C.tox_conference_send_message(this.toxcore, _gn, mtype, (*C.uint8_t)(&_action[0]), _length, &cerr)
-	if r == false {
-		return 0, errors.New("group action failed")
-	}
-	return 1, nil
-}
-
-func (this *Tox) ConferenceSendMessage(groupNumber uint32, message string) (int, error) {
+func (this *Tox) ConferenceSendMessage(groupNumber uint32, mtype int, message string) (int, error) {
 	this.lock()
 	defer this.unlock()
 
@@ -335,11 +310,17 @@ func (this *Tox) ConferenceSendMessage(groupNumber uint32, message string) (int,
 	var _message = []byte(message)
 	var _length = C.size_t(len(message))
 
+	switch mtype {
+	case MESSAGE_TYPE_NORMAL:
+	case MESSAGE_TYPE_ACTION:
+	default:
+		return 0, toxerrf("Invalid message type: %d", mtype)
+	}
+
 	var cerr C.TOX_ERR_CONFERENCE_SEND_MESSAGE
-	var mtype C.TOX_MESSAGE_TYPE = C.TOX_MESSAGE_TYPE_NORMAL
-	r := C.tox_conference_send_message(this.toxcore, _gn, mtype, (*C.uint8_t)(&_message[0]), _length, &cerr)
+	r := C.tox_conference_send_message(this.toxcore, _gn, (C.TOX_MESSAGE_TYPE)(mtype), (*C.uint8_t)(&_message[0]), _length, &cerr)
 	if r == false {
-		return 0, errors.New("group send message failed")
+		return 0, toxerrf("group send message failed: %d", cerr)
 	}
 	return 1, nil
 }
@@ -352,12 +333,13 @@ func (this *Tox) ConferenceSetTitle(groupNumber uint32, title string) (int, erro
 	var _title = []byte(title)
 	var _length = C.size_t(len(title))
 
-	r := C.tox_conference_set_title(this.toxcore, _gn, (*C.uint8_t)(&_title[0]), _length, nil)
+	var cerr C.TOX_ERR_CONFERENCE_TITLE
+	r := C.tox_conference_set_title(this.toxcore, _gn, (*C.uint8_t)(&_title[0]), _length, &cerr)
 	if r == false {
 		if len(title) > MAX_NAME_LENGTH {
 			return 0, errors.New("title too long")
 		}
-		return 0, errors.New("set title failed")
+		return 0, toxerrf("set title failed:%d", cerr)
 	}
 	return 1, nil
 }
@@ -445,7 +427,7 @@ func (this *Tox) ConferenceGetChatlistSize() uint32 {
 }
 
 func (this *Tox) ConferenceGetChatlist() []int32 {
-	var sz uint32 = this.CountChatList()
+	var sz uint32 = this.ConferenceGetChatlistSize()
 	vec := make([]int32, sz)
 	if sz == 0 {
 		return vec
