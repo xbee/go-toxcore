@@ -35,6 +35,9 @@ func main() {
 	log.Println(tcpsrv)
 
 	rc := dht.BootstrapFromAddress("205.185.116.116", false, 33445, "A179B09749AC826FF01F37A9613F6B57118AE014D4196A0E1105A98F93A54702")
+	rc = dht.BootstrapFromAddress("127.0.0.1", false, 33445, "398C8161D038FD328A573FFAA0F5FAAF7FFDE5E8B4350E7D15E6AFD0B993FC52")
+	rc = dht.BootstrapFromAddress("85.172.30.117", false, 33445, "8E7D0B859922EF569298B4D261A8CCB5FEA14FB91ED412A7603A585A25698832")
+
 	log.Println(rc)
 	if !rc {
 		log.Println(rc)
@@ -48,9 +51,11 @@ func main() {
 			dht.Do()
 			tcpsrv.Do()
 			netcore.Poll()
-			dht.Dump()
-			log.Println()
-			time.Sleep(200 * time.Millisecond)
+			if toxin.NeedDump(dht) {
+				dht.Dump()
+				log.Println()
+			}
+			time.Sleep(300 * time.Millisecond)
 		}
 	}()
 

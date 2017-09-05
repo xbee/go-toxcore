@@ -40,6 +40,20 @@ func (ip *IP) Init() {
 	C.ip_init((*C.IP)((unsafe.Pointer)(ip)), 0)
 }
 
+func ip_ntoa(ip *C.IP) string {
+	var ip_str [int(C.IP_NTOA_LEN)]byte
+	var ip_str_c = (*C.char)((unsafe.Pointer)(&ip_str[:][0]))
+	C.ip_ntoa(ip, ip_str_c, C.IP_NTOA_LEN)
+	return C.GoString(ip_str_c)
+}
+
+func addr_parse_ip(address string, ip *C.IP) int {
+	// int addr_parse_ip(const char *address, IP *to);
+	r := C.addr_parse_ip((*C.char)((unsafe.Pointer)(&[]byte(address)[0])), ip)
+	return int(r)
+}
+
+////
 type NetworkCore struct {
 	net *C.Networking_Core
 }
