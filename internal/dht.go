@@ -14,7 +14,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time"
 	"unsafe"
 )
 
@@ -46,8 +45,67 @@ func (this *DHT) GetNodes(ip_port *C.IP_Port, pubkey *C.uint8_t, clientid *C.uin
 	// var ip_port *C.IP_Port
 	C.DHT_getnodes(this.dht, ip_port, pubkey, clientid)
 }
-func (this *DHT) AddFriend() {}
+
+/////
+//export onFriendIPResponse
+func onFriendIPResponse(data unsafe.Pointer, number C.int32_t, ip_port C.IP_Port) {
+	uds := cbi.getmapping(data)
+	ipcbfn := uds[0].(func(interface{}, int32, string, uint16))
+	data_ := uds[1]
+	number_ := uds[2].(int32)
+
+	ip := ip_ntoa(&ip_port.ip)
+	port := net_to_host(uint16(ip_port.port))
+
+	ipcbfn(data_, number_, ip, port)
+	// TODO unmaping it?
+}
+func (this *DHT) AddFriend(pubkey string, ipcbfn func(interface{}, int32, string, uint16), data interface{}, number int32) int {
+	retfn, retud := cbi.mapping(unsafe.Pointer(C.onFriendIPResponse), ipcbfn, data, number)
+
+	pubkey_ := [C.TOX_PUBLIC_KEY_SIZE]byte{}
+	str2ppkey(pubkey, (*C.uint8_t)(&pubkey_[0]))
+	var lock_count C.uint16_t
+	r := this.AddFriendC((*C.uint8_t)(&pubkey_[0]), retfn, retud, C.int32_t(number), &lock_count)
+	return int(r)
+}
+func (this *DHT) AddFriendC(pubkey *C.uint8_t, ipcbfn *[0]byte, data unsafe.Pointer, number C.int32_t, lock_count *C.uint16_t) C.int {
+	r, err := C.DHT_addfriend(this.dht, pubkey, ipcbfn, data, number, lock_count)
+	if err != nil {
+		log.Println(err, r)
+	}
+	return r
+}
+
 func (this *DHT) DelFriend() {}
+
+func (this *DHT) GetFriendIP(pubkey string) (ip string, port uint16) {
+	// int DHT_getfriendip(const DHT *dht, const uint8_t *public_key, IP_Port *ip_port);
+
+	pubkey_ := [C.TOX_PUBLIC_KEY_SIZE]byte{}
+	str2ppkey(pubkey, (*C.uint8_t)(&pubkey_[0]))
+	var ip_port C.IP_Port
+
+	r, err := C.DHT_getfriendip(this.dht, (*C.uint8_t)(&pubkey_[0]), &ip_port)
+	if err != nil {
+		log.Println(err)
+	}
+	// log.Println(r, net_to_host(uint16(ip_port.port)))
+	// log.Println(ip_ntoa(&ip_port.ip))
+	if r == 1 {
+		ip = ip_ntoa(&ip_port.ip)
+		port = net_to_host(uint16(ip_port.port))
+	}
+
+	if true {
+		friendo := addrStep(unsafe.Pointer(this.dht.friends_list), 2*C.sizeof_DHT_Friend)
+		friendo_ := (*C.DHT_Friend)(friendo)
+		pk_ := ppkey2str(&friendo_.public_key[0])
+		log.Println(pk_)
+	}
+
+	return
+}
 
 func IdClosest()  {}
 func AddToLists() {}
@@ -81,16 +139,34 @@ func (this *DHT) BootstrapFromAddress(address string,
 		log.Println(err)
 	}
 	pubkey__ := (*C.uint8_t)((unsafe.Pointer)(&pubkey_[0]))
-	ret := C.DHT_bootstrap_from_address(this.dht, addr_, ipv6enabled_, port_, pubkey__)
+	ret, err := C.DHT_bootstrap_from_address(this.dht, addr_, ipv6enabled_, port_, pubkey__)
+	if err != nil {
+		log.Println(err)
+	}
 	if ret == 1 {
 		return true
 	}
 	return false
 }
 
-func (this *DHT) ConnectAfterLoad()             {}
-func (this *DHT) RoutePacket()                  {}
-func (this *DHT) RouteToFriend()                {}
+func (this *DHT) ConnectAfterLoad() int {
+	r := C.DHT_connect_after_load(this.dht)
+	return int(r)
+}
+func (this *DHT) RoutePacket(pubkey string, packet []byte) int {
+	pubkey_ := [C.TOX_PUBLIC_KEY_SIZE]byte{}
+	str2ppkey(pubkey, (*C.uint8_t)(&pubkey_[0]))
+	r := C.route_packet(this.dht, (*C.uint8_t)(&pubkey_[0]), (*C.uint8_t)(&packet[0]), C.uint16_t(len(packet)))
+	_ = r
+	return int(r)
+}
+func (this *DHT) RouteToFriend(pubkey string, packet []byte) int {
+	pubkey_ := [C.TOX_PUBLIC_KEY_SIZE]byte{}
+	str2ppkey(pubkey, (*C.uint8_t)(&pubkey_[0]))
+	r := C.route_tofriend(this.dht, (*C.uint8_t)(&pubkey_[0]), (*C.uint8_t)(&packet[0]), C.uint16_t(len(packet)))
+	_ = r
+	return int(r)
+}
 func (this *DHT) cryptopacket_registerhandler() {}
 func (this *DHT) Size() uint32 {
 	return uint32(C.DHT_size(this.dht))
@@ -115,22 +191,22 @@ func (this *DHT) SecretKey() []byte {
 //////
 type cbimpl struct {
 	cbid  int32
-	cbmap map[int32]interface{}
+	cbmap map[int32][]interface{}
 	mu    sync.Mutex
 }
 
 func newcbimpl() *cbimpl {
 	this := &cbimpl{}
-	this.cbmap = make(map[int32]interface{})
+	this.cbmap = make(map[int32][]interface{})
 	return this
 }
 
-func (this *cbimpl) mapping(fn unsafe.Pointer, ud interface{}) (
+func (this *cbimpl) mapping(fn unsafe.Pointer, uds ...interface{}) (
 	retfn *[0]byte, retud unsafe.Pointer) {
 	retfn = (*[0]byte)(fn)
 	id := atomic.AddInt32(&this.cbid, 1)
 	retud = unsafe.Pointer(uintptr(id))
-	this.cbmap[id] = ud
+	this.cbmap[id] = uds
 	return
 }
 
@@ -138,10 +214,10 @@ func (this *cbimpl) unmaping(udc unsafe.Pointer) (ud interface{}) {
 	return
 }
 
-func (this *cbimpl) getmapping(udc unsafe.Pointer) (ud interface{}) {
+func (this *cbimpl) getmapping(udc unsafe.Pointer) (uds []interface{}) {
 	id := int32(uintptr(udc))
 	if udx, ok := this.cbmap[id]; ok {
-		ud = udx
+		uds = udx
 		return
 	}
 	return
@@ -164,7 +240,7 @@ func (this *DHT) CallbackGetnodesResponse(cbfn func(string, uint16, string, inte
 //export onGetnodesResponse
 func onGetnodesResponse(ip_port *C.IP_Port, pubkey *C.uint8_t, ud unsafe.Pointer) {
 	udx := cbi.getmapping(ud)
-	this := udx.(*DHT)
+	this := udx[0].(*DHT)
 	// log.Println(this)
 	if this.getnodes_response != nil {
 		ip := ip_ntoa(&ip_port.ip)
@@ -172,111 +248,6 @@ func onGetnodesResponse(ip_port *C.IP_Port, pubkey *C.uint8_t, ud unsafe.Pointer
 		pubkey_ := ppkey2str(pubkey)
 		this.getnodes_response(ip, port, pubkey_, this.cb_user_data)
 	}
-}
-
-func (this *DHT) Dump() {
-	/*
-	       Networking_Core *net;
-
-	       Client_data    close_clientlist[LCLIENT_LIST];
-	       uint64_t       close_lastgetnodes;
-	       uint32_t       close_bootstrap_times;
-
-	       // Note: this key should not be/is not used to transmit any sensitive materials
-	       uint8_t      secret_symmetric_key[crypto_box_KEYBYTES];
-	       // DHT keypair
-	       uint8_t self_public_key[crypto_box_PUBLICKEYBYTES];
-	       uint8_t self_secret_key[crypto_box_SECRETKEYBYTES];
-
-	       DHT_Friend    *friends_list;
-	       uint16_t       num_friends;
-
-	       Node_format   *loaded_nodes_list;
-	       uint32_t       loaded_num_nodes;
-	       unsigned int   loaded_nodes_index;
-
-	       Shared_Keys shared_keys_recv;
-	       Shared_Keys shared_keys_sent;
-
-	       struct PING   *ping;
-	       Ping_Array    dht_ping_array;
-	       Ping_Array    dht_harden_ping_array;
-	   #ifdef ENABLE_ASSOC_DHT
-	       struct Assoc  *assoc;
-	   #endif
-	       uint64_t       last_run;
-
-	       Cryptopacket_Handles cryptopackethandlers[256];
-
-	       Node_format to_bootstrap[MAX_CLOSE_TO_BOOTSTRAP_NODES];
-	       unsigned int num_to_bootstrap;
-
-	*/
-
-	pubkey_bin := C.GoBytes(unsafe.Pointer(&this.dht.self_public_key[0]), C.TOX_PUBLIC_KEY_SIZE)
-	pubkey := strings.ToUpper(hex.EncodeToString(pubkey_bin))
-	log.Println("=====DUMP BEGIN=====")
-	log.Println("pubkey:", pubkey, len(pubkey))
-	seckey_bin := C.GoBytes(unsafe.Pointer(&this.dht.self_secret_key[0]), C.TOX_SECRET_KEY_SIZE)
-	seckey := strings.ToUpper(hex.EncodeToString(seckey_bin))
-	log.Println("seckey:", seckey, len(seckey))
-	log.Println("close_lastgetnodes:", this.dht.close_lastgetnodes, time.Unix(int64(this.dht.close_lastgetnodes), 0))
-	log.Println("close_bootstrap_times:", this.dht.close_bootstrap_times)
-	log.Println("num_friends:", this.dht.num_friends)
-	log.Println("loaded_num_nodes:", this.dht.loaded_num_nodes)
-	log.Println("loaded_nodes_index:", this.dht.loaded_nodes_index)
-	log.Println("last_run:", this.dht.last_run, time.Unix(int64(this.dht.last_run), 0))
-	log.Println("num_to_bootstrap:", this.dht.num_to_bootstrap)
-	log.Println("num_close_clientlist:", NewClientDataListFrom((**C.Client_data)((unsafe.Pointer)(&this.dht.close_clientlist)), C.LCLIENT_LIST).Count())
-	log.Println("dht size:", this.Size())
-	NewDHTFriendListFrom(this.dht.friends_list, this.dht.num_friends).Dump()
-
-	//
-	log.Println("dht is connected:", this.IsConnected())
-}
-
-// 查看是否有状态变化
-var last_dht C.DHT
-var last_connected int = 0
-
-func NeedDump(dht *DHT) (need bool) {
-	changed := []string{}
-
-	connected := dht.IsConnected()
-	if connected != last_connected {
-		changed = append(changed, "connected")
-		need = true
-	}
-
-	dhtc := dht.dht
-	if dhtc.num_to_bootstrap != last_dht.num_to_bootstrap {
-		changed = append(changed, "num_to_bootstrap")
-		need = true
-	}
-	if dhtc.loaded_nodes_index != last_dht.loaded_nodes_index {
-		changed = append(changed, "loaded_nodes_index")
-		need = true
-	}
-	if dhtc.loaded_num_nodes != last_dht.loaded_num_nodes {
-		changed = append(changed, "loaded_num_nodes")
-		need = true
-	}
-	if dhtc.num_friends != last_dht.num_friends {
-		changed = append(changed, "num_friends")
-		need = true
-	}
-	if dhtc.close_bootstrap_times != last_dht.close_bootstrap_times {
-		changed = append(changed, "close_bootstrap_times")
-		need = true
-	}
-
-	last_dht = *dht.dht
-	last_connected = connected
-
-	if need {
-		log.Println(strings.Join(changed, ", "))
-	}
-	return
 }
 
 type ClientData struct {
@@ -324,22 +295,7 @@ func (this *ClientDataList) Count() (cnt int) {
 	return
 }
 
-func (this *ClientDataList) Dump() {
-	for i := 0; i < this.len; i++ {
-		cdx := addrStep(unsafe.Pointer(this.cds), i*C.sizeof_Client_data)
-		cd := (*C.Client_data)(cdx)
-		if is_timeout(uint64(cd.assoc4.timestamp), uint64(C.BAD_NODE_TIMEOUT)) {
-			continue
-		}
-
-		port := lendian_to_host16(uint16(cd.assoc4.ip_port.port))
-		port = net_to_host(uint16(cd.assoc4.ip_port.port))
-		pubkey := ppkey2str(&cd.public_key[0])
-		log.Println(i, port, cd.assoc4.ip_port.ip.family,
-			ip_ntoa(&cd.assoc4.ip_port.ip), pubkey)
-	}
-}
-
+//////////////
 type DHTFriend struct {
 	f *C.DHT_Friend
 }
@@ -354,32 +310,7 @@ func NewDHTFriendListFrom(frs *C.DHT_Friend, num C.uint16_t) *DHTFriendList {
 	return this
 }
 
-func (this *DHTFriendList) Dump() {
-	for i := 0; i < this.num; i++ {
-		fix := addrStep(unsafe.Pointer(this.frs), C.sizeof_DHT_Friend*i)
-		fi := (*C.DHT_Friend)(fix)
-		pubkey := ppkey2str(&fi.public_key[0])
-		if false {
-			log.Println(i, fi.num_to_bootstrap, pubkey)
-		}
-
-		cds := NewClientDataListFrom((**C.Client_data)((unsafe.Pointer)(&fi.client_list)), C.MAX_FRIEND_CLIENTS)
-		if false {
-			log.Println(i, cds.Count())
-			cds.Dump()
-		}
-		this.DumpBootstrapNodes()
-	}
-}
-
-func (this *DHTFriendList) DumpClientData() {
-}
-
-func (this *DHTFriendList) DumpBootstrapNodes() {
-	log.Println("Dumping...", this.frs.num_to_bootstrap)
-	NewNodeFormatList(&this.frs.to_bootstrap[0], int(this.frs.num_to_bootstrap)).Dump()
-}
-
+////////////////
 type NodeFormat struct {
 	nf *C.Node_format
 }
@@ -467,16 +398,4 @@ func NewNodeFormatList(nfs *C.Node_format, num int) *NodeFormatList {
 	return this
 }
 
-func (this *NodeFormatList) Dump() {
-	for idx := 0; idx < this.num; idx++ {
-		nfx := addrStep(unsafe.Pointer(this.nfs), idx*C.sizeof_Node_format)
-		nf := (*C.Node_format)(nfx)
-
-		pubkey := ppkey2str(&nf.public_key[0])
-		port := net_to_host(uint16(nf.ip_port.port))
-		ipaddr := ip_ntoa(&nf.ip_port.ip)
-		if false {
-			log.Println(idx, port, ipaddr, pubkey)
-		}
-	}
-}
+///////////

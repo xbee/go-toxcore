@@ -9,6 +9,8 @@ extern "C" {
 
     extern void onGetnodesResponse(IP_Port *ip_port, uint8_t *pubkey, void *ud);
 
+    extern void onFriendIPResponse(void *data, int32_t number, IP_Port ip_port);
+
 #ifdef __cplusplus
 }
 #endif

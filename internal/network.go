@@ -4,7 +4,10 @@ package toxin
 #include "DHT.h"
 */
 import "C"
-import "unsafe"
+import (
+	"log"
+	"unsafe"
+)
 
 type IP4 [4]byte
 type IP6 [16]byte
@@ -43,13 +46,22 @@ func (ip *IP) Init() {
 func ip_ntoa(ip *C.IP) string {
 	var ip_str [int(C.IP_NTOA_LEN)]byte
 	var ip_str_c = (*C.char)((unsafe.Pointer)(&ip_str[:][0]))
-	C.ip_ntoa(ip, ip_str_c, C.IP_NTOA_LEN)
+	_, err := C.ip_ntoa(ip, ip_str_c, C.IP_NTOA_LEN)
+	if err != nil {
+		log.Println(err)
+		return ""
+	}
 	return C.GoString(ip_str_c)
 }
 
 func addr_parse_ip(address string, ip *C.IP) int {
-	// int addr_parse_ip(const char *address, IP *to);
-	r := C.addr_parse_ip((*C.char)((unsafe.Pointer)(&[]byte(address)[0])), ip)
+	if len(address) == 0 {
+		// return 0
+	}
+	r, err := C.addr_parse_ip((*C.char)((unsafe.Pointer)(&[]byte(address)[0])), ip)
+	if err != nil {
+		log.Println(err)
+	}
 	return int(r)
 }
 
@@ -78,7 +90,10 @@ func SockKill(sock int) {
  * return 0 on failure
  */
 func SetSocketNonblock(sock int) int {
-	r := C.set_socket_nonblock((C.Socket)(sock))
+	r, err := C.set_socket_nonblock((C.Socket)(sock))
+	if err != nil {
+		log.Println(err)
+	}
 	return int(r)
 }
 
@@ -88,7 +103,10 @@ func SetSocketNonblock(sock int) int {
  * return 0 on failure
  */
 func SetSocketNosigpipe(sock int) int {
-	r := C.set_socket_nosigpipe((C.Socket)(sock))
+	r, err := C.set_socket_nosigpipe((C.Socket)(sock))
+	if err != nil {
+		log.Println(err)
+	}
 	return int(r)
 }
 
@@ -98,7 +116,10 @@ func SetSocketNosigpipe(sock int) int {
  * return 0 on failure
  */
 func SetSocketReuseaddr(sock int) int {
-	r := C.set_socket_reuseaddr((C.Socket)(sock))
+	r, err := C.set_socket_reuseaddr((C.Socket)(sock))
+	if err != nil {
+		log.Println(err)
+	}
 	return int(r)
 }
 
@@ -108,7 +129,10 @@ func SetSocketReuseaddr(sock int) int {
  * return 0 on failure
  */
 func SetSocketDualstack(sock int) int {
-	r := C.set_socket_dualstack((C.Socket)(sock))
+	r, err := C.set_socket_dualstack((C.Socket)(sock))
+	if err != nil {
+		log.Println(err)
+	}
 	return int(r)
 }
 

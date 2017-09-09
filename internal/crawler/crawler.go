@@ -2,7 +2,6 @@
 package main
 
 import (
-	"fmt"
 	"gopp"
 	"log"
 	"math/rand"
@@ -106,11 +105,11 @@ func node_crawled(cwl *Crawler, pubkey string) bool {
 }
 
 func cb_getnodes_response(ip string, port uint16, pubkey string, object interface{}) {
-	log.Println(fmt.Sprintf("%s:%d", ip, port), len(pubkey), pubkey, object == nil)
+	// log.Println(fmt.Sprintf("%s:%d", ip, port), len(pubkey), pubkey, object == nil)
 	cwl := object.(*Crawler)
 
 	if node_crawled(cwl, pubkey) {
-		log.Println("already crawled:", cwl.num_nodes)
+		// log.Println("already crawled:", cwl.num_nodes)
 		return
 	}
 
@@ -127,11 +126,9 @@ func cb_getnodes_response(ip string, port uint16, pubkey string, object interfac
 	node.Set(ip, port, pubkey)
 
 	cwl.num_nodes++
-	log.Println("num_nodes:", cwl.num_nodes)
+	// log.Println("num_nodes:", cwl.num_nodes)
+
 	// 难道说是内网中的节点搜索不到？
-	wantkeys := []string{
-	// "A179B09749AC826FF01F37A9613F6B57118AE014D4196A0E1105A98F93A54702",
-	}
 	for idx, key := range wantkeys {
 		if len(key) != len(pubkey) {
 			log.Fatalln("wtf:", idx, key, pubkey)
@@ -170,7 +167,7 @@ func send_node_requests(cwl *Crawler) int {
 	}
 
 	if count == 0 {
-		log.Println("wtf", "send ptr:", i, "count:", count)
+		// log.Println("wtf", "send ptr:", i, "count:", count)
 	}
 	cwl.send_ptr = uint32(i)
 	cwl.last_getnodes_request = get_time()
@@ -220,24 +217,37 @@ func main() {
 	tcpsrv := toxin.NewTCPServer(true, []uint16{33445}, secret_key, onion)
 	log.Println(tcpsrv)
 
-	dht.Dump()
+	dht.LANdiscoveryInit()
 
 	cwl := NewCrawler(dht)
 	bootstrap_dht(cwl)
 
-	dht.LANdiscoveryInit()
+	// add wantkeys
+	ret := dht.AddFriend(wantkeys[3],
+		func(data interface{}, number int32, ip string, port uint16) {
+			log.Println(number, ip, port)
+			time.Sleep(5 * time.Second)
+		}, dht, 0)
+	if ret != 0 {
+		log.Fatalln("add friend faild", ret)
+	}
 
+	dht.Dump()
+	// iterate loop
 	go func() {
 		for {
 			send_node_requests(cwl)
 			dht.Do()
 			tcpsrv.Do()
 			netcore.Poll()
-			if toxin.NeedDump(dht) {
+			if false && toxin.NeedDump(dht) {
 				dht.Dump()
 				log.Println()
 			}
 			time.Sleep(500 * time.Millisecond)
+			ip, port := dht.GetFriendIP(wantkeys[3])
+			nn := dht.RouteToFriend(wantkeys[3], []byte("testiipnggg"))
+			log.Println(nn, ip, port)
 		}
 	}()
 
