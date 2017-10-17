@@ -116,6 +116,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	// "sync"
 	"unsafe"
 
 	deadlock "github.com/sasha-s/go-deadlock"
@@ -156,6 +157,7 @@ type Tox struct {
 	toxcore    *C.Tox // save C.Tox
 	threadSafe bool
 	mu         deadlock.RWMutex
+	// mu sync.RWMutex
 
 	// some callbacks, should be private
 	cb_friend_requests           map[unsafe.Pointer]interface{}

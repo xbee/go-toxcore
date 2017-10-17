@@ -43,6 +43,7 @@ static inline void fixnousetoxgroup() {
 */
 import "C"
 import (
+	"bytes"
 	"encoding/hex"
 	"errors"
 	"strings"
@@ -240,7 +241,7 @@ func (this *Tox) ConferencePeerGetName(groupNumber uint32, peerNumber uint32) (s
 		return "", toxerrf("get peer name failed: %d", cerr)
 	}
 
-	return string(_name[:]), nil
+	return string(_name[:bytes.IndexRune(_name[:], 0)]), nil
 }
 
 func (this *Tox) ConferencePeerGetPublicKey(groupNumber uint32, peerNumber int) (string, error) {
@@ -352,7 +353,7 @@ func (this *Tox) ConferenceGetTitle(groupNumber uint32) (string, error) {
 	if r == false {
 		return "", errors.New("get title failed")
 	}
-	return string(_title[:]), nil
+	return string(_title[:bytes.IndexRune(_title[:], 0)]), nil
 }
 
 func (this *Tox) ConferencePeerNumberIsOurs(groupNumber uint32, peerNumber uint32) bool {
