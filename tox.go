@@ -630,6 +630,10 @@ func NewTox(opt *ToxOptions) *Tox {
 	}
 	cbUserDatas.set(toxcore, tox)
 
+	// set default name and status
+	tox.SelfSetName("NickName")
+	tox.SelfSetStatusMessage("Offline")
+
 	//
 	tox.cb_friend_requests = make(map[unsafe.Pointer]interface{})
 	tox.cb_friend_messages = make(map[unsafe.Pointer]interface{})
